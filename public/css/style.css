@@ -1,0 +1,190 @@
+/* Estilos generales */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f6f9;
+}
+
+/* Cabecera */
+header {
+    text-align: center;
+    padding: 50px 20px;
+}
+
+/* Botones */
+.btn-primary {
+    background-color: #007bff;
+    border: none;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+}
+
+/* Contenedores */
+.container {
+    max-width: 1200px;
+}
+
+/* Productos */
+.product-card {
+    border: 1px solid #ddd;
+    padding: 15px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.product-card img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Carrusel */
+.carousel-item {
+    height: 400px;
+}
+
+.carousel-item img {
+    height: 100%;
+    width: 100%;
+    object-fit: cover;
+}
+
+/* Página de contacto */
+body.contact-page {
+    background-color: #f4f6f9;
+}
+
+.contact-section {
+    padding: 60px 0;
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+.form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.form-label {
+    font-weight: 500;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Personalizado */
+.bg-carmesi {
+    background-color: #9B1B30 !important;
+}
+
+
+body.login-page {
+    background: linear-gradient(to bottom right, #f5f7fa, #c3cfe2);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.login-container {
+    max-width: 400px;
+    margin: auto;
+    animation: fadeIn 0.6s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card {
+    border-radius: 15px;
+}
+
+.form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, .25);
+}
+
+.login-icon {
+    font-size: 3rem;
+    color: #0d6efd;
+}
+
+
+html,
+body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.page-wrapper {
+    min-height: 100vh;
+    /* Asegura que ocupe toda la pantalla */
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex-grow: 1;
+    /* Ocupa todo el espacio posible para empujar el footer hacia abajo */
+}
+
+/* --- Animación de "Sacudida" para Errores --- */
+
+/* 1. Define la animación (los fotogramas) */
+@keyframes shake-horizontal {
+
+    0%,
+    100% {
+        transform: translateX(0);
+        /* Empieza y termina quieto */
+    }
+
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+        transform: translateX(-5px);
+        /* Se mueve a la izquierda */
+    }
+
+    20%,
+    40%,
+    60%,
+    80% {
+        transform: translateX(5px);
+        /* Se mueve a la derecha */
+    }
+}
+
+/* Ajuste global para que el botón flotante de accesibilidad no tape el menú hamburguesa en móviles */
+@media (max-width: 991.98px) {
+    .navbar-toggler {
+        position: relative;
+        z-index: 1060;
+        margin-right: 60px !important;
+        /* Ajusta este valor si el botón de accesibilidad es más ancho */
+    }
+}
+
+/* 2. Crea la clase que usará la animación */
+.alert-error-animated {
+    animation: shake-horizontal 0.5s ease-in-out;
+}

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba del Asistente IA - Tinkuy</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { padding: 40px; background: #f8f9fa; }
+        .test-card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .response-box { background: #f1f3f5; padding: 15px; border-radius: 5px; margin-top: 15px; min-height: 80px; }
+        .success { border-left: 4px solid #28a745; }
+        .error { border-left: 4px solid #dc3545; }
+        .loading { border-left: 4px solid #ffc107; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; }
+    </style>
+    <!-- Nota: Este archivo vive en /public/test/, el endpoint está en /public/ -->
+</head>
+<body>
+    <div class="container">
+        <h1 class="mb-3">🧪 Prueba del Asistente IA - Tinkuy</h1>
+        <div class="form-check form-switch mb-4">
+            <input class="form-check-input" type="checkbox" id="demoToggle">
+            <label class="form-check-label" for="demoToggle">Modo demo (sin API key)</label>
+        </div>
+        
+        <div class="test-card">
+            <h3>Test 1: Consulta Normal</h3>
+            <p class="text-muted">Prueba con una búsqueda típica de usuario</p>
+            <button class="btn btn-primary" onclick="testQuery(this, 'chompa de alpaca')">Ejecutar Test</button>
+            <div id="test1" class="response-box">Haz clic en el botón para ejecutar...</div>
+        </div>
+
+        <div class="test-card">
+            <h3>Test 2: Query Vacío (Validación)</h3>
+            <p class="text-muted">Debe retornar error 400</p>
+            <button class="btn btn-primary" onclick="testQuery(this, '')">Ejecutar Test</button>
+            <div id="test2" class="response-box">Haz clic en el botón para ejecutar...</div>
+        </div>
+
+        <div class="test-card">
+            <h3>Test 3: Consulta Genérica</h3>
+            <p class="text-muted">Pregunta abierta para ver la creatividad de la IA</p>
+            <button class="btn btn-primary" onclick="testQuery(this, 'Quiero un regalo para mi mamá')">Ejecutar Test</button>
+            <div id="test3" class="response-box">Haz clic en el botón para ejecutar...</div>
+        </div>
+
+        <div class="test-card">
+            <h3>Test 4: Producto Específico</h3>
+            <p class="text-muted">Búsqueda de producto artesanal concreto</p>
+            <button class="btn btn-primary" onclick="testQuery(this, 'collar de plata hecho a mano')">Ejecutar Test</button>
+            <div id="test4" class="response-box">Haz clic en el botón para ejecutar...</div>
+        </div>
+
+        <div class="test-card">
+            <h3>📊 Resumen de Tests</h3>
+            <div id="summary">
+                <p>Ejecuta los tests para ver un resumen de resultados</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let testResults = { passed: 0, failed: 0 };
+
+        async function testQuery(buttonEl, query) {
+            const card = buttonEl.closest('.test-card');
+            let idEl = card ? card.querySelector('[id^="test"]') : null;
+            const testNumber = idEl ? idEl.id.replace('test', '') : 'X';
+            let resultDiv = idEl;
+            if (!resultDiv) {
+                resultDiv = document.createElement('div');
+                resultDiv.className = 'response-box';
+                resultDiv.id = 'test' + testNumber;
+                if (card) card.appendChild(resultDiv);
+            }
+            
+            resultDiv.className = 'response-box loading';
+            resultDiv.innerHTML = '⏳ Consultando a la IA...';
+            if (buttonEl) buttonEl.disabled = true;
+
+            try {
+                const startTime = Date.now();
+                // El test vive en /public/test/, el endpoint está un nivel arriba
+                const endpoint = new URL('../deepseek_search.php', window.location.href);
+                const demo = document.getElementById('demoToggle');
+                if (demo && demo.checked) {
+                    endpoint.searchParams.set('demo','1');
+                }
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                });
+
+                const endTime = Date.now();
+                const duration = endTime - startTime;
+
+                let data;
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    throw new Error('Respuesta no es JSON válido');
+                }
+
+                const isEmptyQuery = (typeof query === 'string' && query.trim() === '');
+                const isExpectedValidation = (isEmptyQuery && response.status === 400);
+
+                resultDiv.className = 'response-box ' + (response.ok || isExpectedValidation ? 'success' : 'error');
+                
+                let html = '<strong>Status:</strong> ' + response.status + ' ' + response.statusText + '<br>';
+                html += '<strong>Tiempo de respuesta:</strong> ' + duration + 'ms<br><br>';
+                html += '<strong>Respuesta JSON:</strong><br>';
+                html += '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+
+                if (data.texto) {
+                    html += '<div class="alert alert-info mt-2"><strong>💬 Recomendación IA:</strong><br>' + data.texto + '</div>';
+                }
+                if (data.keyword) {
+                    html += '<div class="alert alert-success mt-2"><strong>🔑 Keyword:</strong> ' + data.keyword + '</div>';
+                }
+                if (data.error) {
+                    if (isExpectedValidation) {
+                        html += '<div class="alert alert-success mt-2"><strong>✅ Validación correcta (HTTP 400):</strong> ' + data.error + '</div>';
+                    } else {
+                        html += '<div class="alert alert-danger mt-2"><strong>❌ Error:</strong> ' + data.error + '</div>';
+                    }
+                }
+
+                resultDiv.innerHTML = html;
+
+                const passedNormal = (!isEmptyQuery && response.ok && !!data.texto);
+                const passedEmptyValidation = (isEmptyQuery && response.status === 400 && typeof data.error === 'string' && data.error.toLowerCase().includes('query vacío'));
+
+                if (passedNormal || passedEmptyValidation) {
+                    testResults.passed++;
+                } else {
+                    testResults.failed++;
+                }
+                updateSummary();
+
+            } catch (error) {
+                resultDiv.className = 'response-box error';
+                resultDiv.innerHTML = '<strong>❌ Error de Red:</strong><br>' + error.message;
+                testResults.failed++;
+                updateSummary();
+            } finally {
+                if (buttonEl) buttonEl.disabled = false;
+            }
+        }
+
+        function updateSummary() {
+            const summaryDiv = document.getElementById('summary');
+            summaryDiv.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="alert alert-success">
+                            <strong>✅ Tests Exitosos:</strong> ${testResults.passed}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="alert alert-danger">
+                            <strong>❌ Tests Fallidos:</strong> ${testResults.failed}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.addEventListener('load', function() {
+            const ep = new URL('../deepseek_search.php', window.location.href);
+            console.log('🧪 Página de pruebas cargada');
+            console.log('Endpoint IA (demo off):', ep.toString());
+        });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+    </body>
+    </html>
