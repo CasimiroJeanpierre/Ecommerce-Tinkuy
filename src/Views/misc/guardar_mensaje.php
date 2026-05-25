@@ -12,7 +12,7 @@
 /* * Reemplaza 'conexion.php' con el nombre real de tu
  * archivo que contiene la conexión a la base de datos (mysqli).
  */
-include 'conexion.php'; 
+include 'conexion.php';
 
 // --- PASO 2: Verificar que los datos lleguen por POST ---
 /*
@@ -38,7 +38,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
      * (Asumo que 'id_mensaje' es AUTO_INCREMENT y 'leido' tiene un valor por defecto 0).
      */
     $sql = "INSERT INTO mensajes_contacto (nombre, correo, mensaje) VALUES (?, ?, ?)";
-    
+
     // Preparamos la consulta para evitar inyección SQL
     $stmt = $conexion->prepare($sql);
 
@@ -60,18 +60,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             header("Location: contacto.php?status=error_ejecucion");
             exit;
         }
-        
-        // Cerramos el statement
-        $stmt->close();
 
     } else {
         // Error al preparar la consulta (ej. error de sintaxis SQL).
         header("Location: contacto.php?status=error_sql");
         exit;
     }
-
-    // Cerramos la conexión
-    $conexion->close();
 
 } else {
     // Si alguien intenta acceder a este archivo escribiendo la URL

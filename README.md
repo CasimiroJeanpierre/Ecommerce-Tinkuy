@@ -83,9 +83,16 @@ Si deseas probar el envío de correos (simulado), crea una cuenta en:
 Luego copia tus credenciales SMTP y colócalas en:
 
 assets/admin/mailer_config.php
-\n+🧪 Tests Automatizados (PHPUnit)
-\n+Esta sección explica cómo ejecutar y demostrar la batería de tests del proyecto. Se usa **PHPUnit 10.5** configurado en `phpunit.xml` y una base de datos de pruebas que se crea automáticamente al correr los tests (script `test/db_setup.php`).\n\n+### Requisitos
-1. Composer instalado (ya usado para `composer install`).\n+2. PHP >= 8.1.\n+3. (Opcional para cobertura) Extensión **Xdebug** habilitada. Verifica con: `php -m | find "xdebug"` (Windows) o `php -m | grep xdebug` (Linux/macOS).\n\n+### Comandos Básicos (Windows CMD desde raíz del proyecto)
+
+🧪 Tests Automatizados (PHPUnit)
+Esta sección explica cómo ejecutar y demostrar la batería de tests del proyecto. Se usa **PHPUnit 10.5** configurado en `phpunit.xml` y una base de datos de pruebas que se crea automáticamente al correr los tests (script `test/db_setup.php`).
+
+### Requisitos
+1. Composer instalado (ya usado para `composer install`).
+2. PHP >= 8.1.
+3. (Opcional para cobertura) Extensión **Xdebug** habilitada. Verifica con: `php -m | find "xdebug"` (Windows) o `php -m | grep xdebug` (Linux/macOS).
+
+### Comandos Básicos (Windows CMD desde raíz del proyecto)
 ```cmd
 vendor\bin\phpunit              REM Ejecuta todos los tests
 vendor\bin\phpunit --testdox     REM Salida legible tipo documentación
@@ -93,7 +100,8 @@ vendor\bin\phpunit --coverage-html coverage  REM Genera reporte HTML (requiere X
 vendor\bin\phpunit --coverage-text           REM Cobertura directa en consola
 ```
 Los reportes HTML quedan en `coverage/` y el resumen TestDox en `test-reports/testdox.html` si se usa la configuración de logging.
-\n+### Por Suite (definidas en phpunit.xml)
+
+### Por Suite (definidas en phpunit.xml)
 ```cmd
 vendor\bin\phpunit --testsuite Validaciones
 vendor\bin\phpunit --testsuite Modelos
@@ -112,9 +120,11 @@ run_tests_live.bat testdox  REM modo documentación
 run_tests_live.bat coverage REM muestra cobertura en texto
 ```
 Cancelar con `CTRL + C`.
-\n+### Base de Datos de Pruebas
+
+### Base de Datos de Pruebas
 Los tests crean automáticamente una BD `tinkuy_db_test` y datos mínimos (productos, variantes, direcciones). No necesitas importar nada extra para pruebas. El script también restaura el stock para mantener tests idempotentes.
-\n+### Estructura Relacionada a Testing
+
+### Estructura Relacionada a Testing
 ```
 phpunit.xml                  # Configuración de PHPUnit
 test/                        # Carpeta principal de tests
@@ -127,15 +137,22 @@ test/                        # Carpeta principal de tests
 ```
 ### Commit de Referencia
 Última integración de testing: mensaje tipo `feat(testing): configurar PHPUnit 10.5, agregar fixtures y pruebas ampliadas`.
-\n+### Buenas Prácticas
-- No subir `vendor/` (ya ignorado en `.gitignore`).\n+- Ejecutar `composer install` tras clonar antes de correr tests.\n+- Usar `--testdox` para presentación a docentes.\n+- Generar cobertura sólo cuando Xdebug esté disponible (evita sobrecoste en cada ciclo).\n+\n+### Problemas Frecuentes
+
+### Buenas Prácticas
+- No subir `vendor/` (ya ignorado en `.gitignore`).
+- Ejecutar `composer install` tras clonar antes de correr tests.
+- Usar `--testdox` para presentación a docentes.
+- Generar cobertura sólo cuando Xdebug esté disponible (evita sobrecoste en cada ciclo).
+
+### Problemas Frecuentes
 | Problema | Causa | Solución |
 |----------|-------|----------|
 | Unknown database 'tinkuy_db_test' | Falló creación automática | Verificar permisos MySQL y que `test/db_setup.php` se ejecuta (revisar `bootstrap.php`) |
 | Stock insuficiente inesperado | Tests previos consumieron stock | Confirmar restauración (línea de UPDATE en `db_setup.php`) |
 | Warning configuración XML | Atributos no soportados (ej. verbose) | Usar esquema correcto 10.5 y quitar atributos obsoletos |
 | Cobertura vacía | Falta Xdebug | Instalar/habilitar extensión Xdebug |
-\n+### Ejemplo Flujo Demostración Rápida
+
+### Ejemplo Flujo Demostración Rápida
 ```cmd
 vendor\bin\phpunit --testdox
 vendor\bin\phpunit --testsuite Controladores
