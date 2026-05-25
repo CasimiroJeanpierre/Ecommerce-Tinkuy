@@ -23,7 +23,7 @@ Composer version 2.x.x
 
 Abre tu terminal (CMD o PowerShell) y ejecuta:
 
-git clone https://github.com/JEAS-14/Ecommerce-Tinkuy.git
+git clone https://github.com/CasimiroJeanpierre/Ecommerce-Tinkuy.git
 
 
 Luego entra al directorio:
@@ -158,4 +158,3 @@ Toda la documentación técnica está organizada en la carpeta **`docs/`**:
 ---
 
 Si deseas ampliar con tests de roles, concurrencia o autenticación real, crea nuevos archivos dentro de `test/` y agrégalos a la suite adecuada en `phpunit.xml`.
-
