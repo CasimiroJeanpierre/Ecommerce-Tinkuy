@@ -88,9 +88,9 @@ INSERT INTO `categorias` (`id_categoria`, `nombre_categoria`, `descripcion`, `id
 (28, 'Esculturas y Tallas', 'Trabajos en madera, piedra o arcilla', 8),
 (29, 'Instrumentos Musicales', 'Zampoñas, quenas, charangos y más', 8),
 (30, 'Guantes y Mitones', 'Guantes y mitones tejidos de lana, alpaca y más', 6),
-(100, 'Chompas', 'Chompas artesanales de alpaca', NULL),
-(101, 'Accesorios', 'Accesorios tejidos a mano', NULL),
-(102, 'Textiles', 'Textiles y mantas tradicionales', NULL);
+(31, 'Chompas', 'Chompas artesanales de alpaca', NULL),
+(32, 'Accesorios', 'Accesorios tejidos a mano', NULL),
+(33, 'Textiles', 'Textiles y mantas tradicionales', NULL);
 
 -- --------------------------------------------------------
 
@@ -114,9 +114,9 @@ CREATE TABLE `detalle_pedido` (
 --
 
 INSERT INTO `detalle_pedido` (`id_detalle`, `id_pedido`, `id_variante`, `cantidad`, `precio_historico`, `id_empresa_envio`, `numero_seguimiento`, `id_estado_detalle`) VALUES
-(1, 1, 1, 1, 150.00, 4, '1', 3),
+(1, 1, 1, 1, 150.00, 3, '1', 3),
 (2, 1, 3, 1, 80.00, 1, '1', 3),
-(3, 2, 2, 1, 150.00, 4, '1', 3),
+(3, 2, 2, 1, 150.00, 3, '1', 3),
 (4, 3, 2, 1, 150.00, NULL, NULL, 2),
 (5, 4, 2, 1, 150.00, NULL, NULL, 2),
 (6, 5, 4, 1, 45.00, NULL, NULL, 2),
@@ -125,11 +125,11 @@ INSERT INTO `detalle_pedido` (`id_detalle`, `id_pedido`, `id_variante`, `cantida
 (9, 7, 1, 1, 150.00, NULL, NULL, 2),
 (10, 8, 4, 1, 45.00, NULL, NULL, 2),
 (11, 9, 2, 1, 150.00, NULL, NULL, 2),
-(100, 100, 100, 1, 150.00, NULL, NULL, 2),
-(101, 100, 103, 1, 35.00, NULL, NULL, 2),
-(102, 101, 4, 1, 45.00, NULL, NULL, 2),
-(103, 102, 5, 1, 20.00, NULL, NULL, 2),
-(104, 103, 2, 1, 150.00, NULL, NULL, 2);
+(12, 10, 7, 1, 150.00, NULL, NULL, 2),
+(13, 10, 10, 1, 35.00, NULL, NULL, 2),
+(14, 11, 4, 1, 45.00, NULL, NULL, 2),
+(15, 12, 5, 1, 20.00, NULL, NULL, 2),
+(16, 13, 2, 1, 150.00, NULL, NULL, 2);
 
 -- --------------------------------------------------------
 
@@ -152,16 +152,8 @@ CREATE TABLE `direcciones` (
 --
 
 INSERT INTO `direcciones` (`id_direccion`, `id_usuario`, `direccion`, `ciudad`, `pais`, `codigo_postal`, `es_principal`) VALUES
-(1, 2, 'Calle de los Artesanos 123', 'Cusco', 'Perú', 'CUS01', 1),
-(2, 3, 'Av. La Marina 456', 'Lima', 'Perú', 'LIMA15', 1),
-(3, 3, 'Jr. Huallaga 789', 'Arequipa', 'Perú', 'ARE04', 0),
-(4, 4, 'Calle alemania Mz N Lt 42', 'Lima', 'Peru', '111', 0),
-(5, 11, 'Calle alemania Mz N Lt 42', 'Lima', 'Peru', '1111', 1),
-(100, 102, 'Av. Arequipa 1234, Miraflores', 'Lima', 'Perú', '1500', 1),
-(101, 102, 'Jr. Cusco 567, Centro', 'Cusco', 'Perú', '0800', 0),
-(102, 1, 'Calle alemania Mz N Lt 42', 'Lima', 'Peru', '1111', 0),
-(103, 1, 'Calle alemania Mz N Lt 43', 'Lima', 'Peru', '1111', 1),
-(104, 106, 'Calle alemania Mz N Lt 42', 'Lima', 'Peru', '1111', 0);
+(1, 3, 'Av. Arequipa 1234, Miraflores', 'Lima', 'Perú', '1500', 1),
+(2, 3, 'Jr. Cusco 567, Centro', 'Cusco', 'Perú', '0800', 0);
 
 -- --------------------------------------------------------
 
@@ -182,11 +174,11 @@ CREATE TABLE `empresas_envio` (
 
 INSERT INTO `empresas_envio` (`id_empresa_envio`, `nombre_empresa`, `sitio_web`, `tracking_url_base`) VALUES
 (1, 'Olva Courier', 'https://www.olvacourier.com/', 'https://www.olvacourier.com/seguimiento-envio/?numero_envio='),
-(3, 'Urbano', 'https://www.urbano.com.pe/', NULL),
-(4, 'Shalom', 'https://shalom.com.pe/', 'https://rastrea.shalom.pe/'),
-(100, 'Olva Courier Test', NULL, NULL),
-(101, 'Shalom Test', NULL, NULL),
-(102, 'Serpost Test', NULL, NULL);
+(2, 'Urbano', 'https://www.urbano.com.pe/', NULL),
+(3, 'Shalom', 'https://shalom.com.pe/', 'https://rastrea.shalom.pe/'),
+(4, 'Olva Courier Test', NULL, NULL),
+(5, 'Shalom Test', NULL, NULL),
+(6, 'Serpost Test', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -231,52 +223,8 @@ CREATE TABLE `login_intentos` (
 INSERT INTO `login_intentos` (`id`, `ip`, `usuario`, `exitoso`, `fecha_intento`) VALUES
 (1, '::1', 'Jeanpierre', 1, '2026-05-11 20:10:53'),
 (2, '::1', 'Jeanpierre', 1, '2026-05-11 20:14:22'),
-(3, '::1', 'Jeanpierre', 0, '2026-05-11 20:29:26'),
-(4, '::1', 'Jeanpierre', 0, '2026-05-11 20:29:31'),
-(5, '::1', 'Jeanpierre', 0, '2026-05-11 20:29:56'),
-(6, '::1', 'Jeanpierre', 0, '2026-05-11 20:30:08'),
-(7, '::1', 'Jeanpierre', 0, '2026-05-11 20:30:40'),
-(8, '::1', 'Jeanpierre', 0, '2026-05-11 20:30:45'),
-(9, '::1', 'Jeanpierre', 0, '2026-05-11 20:33:46'),
-(10, '::1', 'Jeanpierre', 0, '2026-05-11 20:33:49'),
-(11, '::1', 'Jeanpierre', 0, '2026-05-11 20:33:52'),
-(12, '::1', 'Jeanpierre', 0, '2026-05-11 20:33:55'),
-(13, '::1', 'Jeanpierre', 0, '2026-05-11 20:33:57'),
-(14, '::1', 'Jeanpierre', 0, '2026-05-11 20:34:00'),
-(15, '::1', 'Jeanpierre', 0, '2026-05-11 20:34:02'),
-(16, '::1', 'Jeanpierre', 0, '2026-05-11 20:34:05'),
-(17, '::1', 'Jeanpierre', 0, '2026-05-11 20:34:13'),
-(18, '::1', 'Jeanpierre', 0, '2026-05-11 20:36:30'),
-(19, '::1', 'Jeanpierre', 0, '2026-05-11 20:36:33'),
-(20, '::1', 'Jeanpierre', 0, '2026-05-11 20:36:37'),
-(21, '::1', 'Jeanpierre', 0, '2026-05-11 20:38:15'),
-(22, '::1', 'Jeanpierre', 0, '2026-05-11 20:38:18'),
-(23, '::1', 'Jeanpierre', 0, '2026-05-11 20:38:22'),
-(24, '::1', 'Jeanpierre', 0, '2026-05-11 20:41:40'),
-(25, '::1', 'Jeanpierre', 0, '2026-05-11 20:41:43'),
-(26, '::1', 'Jeanpierre', 0, '2026-05-11 20:41:47'),
-(27, '::1', 'Jeanpierre', 0, '2026-05-11 20:43:34'),
-(28, '::1', 'Jeanpierre', 0, '2026-05-11 20:43:37'),
-(29, '::1', 'Jeanpierre', 0, '2026-05-11 20:43:41'),
-(30, '::1', 'Jeanpierre', 0, '2026-05-11 20:43:44'),
-(31, '::1', 'Jeanpierre', 0, '2026-05-11 20:43:46'),
-(32, '::1', 'Jeanpierre', 0, '2026-05-11 20:58:53'),
-(33, '::1', 'Jeanpierre', 0, '2026-05-11 21:01:45'),
-(34, '::1', 'Jeanpierre', 0, '2026-05-11 21:01:55'),
-(35, '::1', 'Jeanpierre', 0, '2026-05-11 21:07:03'),
-(36, '::1', 'Jeanpierre', 1, '2026-05-11 21:08:19'),
-(37, '::1', 'Jeanpierre', 0, '2026-05-11 21:09:01'),
-(38, '::1', 'Jeanpierre', 1, '2026-05-11 21:10:30'),
-(39, '::1', 'Jeanpierre', 1, '2026-05-11 21:14:22'),
-(40, '::1', 'diego', 1, '2026-05-11 21:23:52'),
-(41, '::1', 'crisdel', 1, '2026-05-11 21:27:21'),
-(42, '::1', 'Jeanpierre', 0, '2026-05-11 21:37:18'),
-(43, '::1', 'Jeanpierre', 1, '2026-05-11 21:38:03'),
-(44, '::1', 'Jeanpierre', 0, '2026-05-11 21:38:16'),
-(45, '::1', 'Jeanpierre', 0, '2026-05-11 21:38:25'),
-(46, '::1', 'Jeanpierre', 1, '2026-05-11 21:38:42'),
-(47, '::1', 'crisdel', 1, '2026-05-11 21:39:49'),
-(48, '::1', 'Jeanpierre', 1, '2026-05-11 21:40:03');
+(3, '::1', 'diego', 1, '2026-05-11 21:23:52'),
+(4, '::1', 'crisdel', 1, '2026-05-11 21:27:21');
 
 -- --------------------------------------------------------
 
@@ -324,11 +272,6 @@ CREATE TABLE `password_resets` (
 -- Volcado de datos para la tabla `password_resets`
 --
 
-INSERT INTO `password_resets` (`id`, `email`, `token_hash`, `expiracion`, `creado_en`) VALUES
-(8, 'eliasjuan@gmail.com', '4db41331556a751fcca115f51156c238c13e69ab7d32ff40920f9f8f90adff2b', '2025-10-24 02:04:07', '2025-10-23 18:04:07'),
-(16, 'eliasjuan17xdxd@gmail.com', '4bea870ef6d590431aef803dd56c50ace307ccb82ef403131463e83cc5383bf2', '2025-11-15 12:52:41', '2025-11-15 05:52:41'),
-(21, 'eliasjuanxd17@hotmail.com', '14fc459baf26e263e21469a166f596d898583c7f4fe1794dde6b091a41e9c4cc', '2025-11-15 13:16:07', '2025-11-15 06:16:07'),
-(22, 'n00334240@upn.pe', '819fad34250903880da1203ee25f70da417606b9b70583614e69fbd7765e37fc', '2025-11-15 13:20:36', '2025-11-15 06:20:36');
 
 -- --------------------------------------------------------
 
@@ -350,19 +293,19 @@ CREATE TABLE `pedidos` (
 --
 
 INSERT INTO `pedidos` (`id_pedido`, `id_usuario`, `id_direccion_envio`, `id_estado_pedido`, `fecha_pedido`, `total_pedido`) VALUES
-(1, 3, 2, 2, '2025-10-22 20:53:10', 230.00),
-(2, 4, 4, 2, '2025-10-23 16:13:08', 150.00),
-(3, 4, 4, 2, '2025-10-23 16:25:22', 150.00),
-(4, 4, 4, 2, '2025-10-23 16:35:37', 150.00),
-(5, 11, 5, 2, '2025-11-05 09:29:19', 65.00),
-(6, 11, 5, 2, '2025-11-05 09:30:53', 10.00),
-(7, 11, 5, 2, '2025-11-05 09:35:06', 150.00),
-(8, 11, 5, 2, '2025-11-05 09:35:48', 45.00),
-(9, 11, 5, 2, '2025-11-05 09:40:04', 150.00),
-(100, 102, 100, 2, '2025-11-15 03:43:02', 185.00),
-(101, 1, 103, 2, '2025-11-15 05:28:20', 45.00),
-(102, 1, 103, 2, '2025-11-15 05:36:55', 20.00),
-(103, 106, 104, 2, '2025-11-15 07:28:03', 150.00);
+(1, 3, 1, 2, '2025-10-22 20:53:10', 230.00),
+(2, 3, 1, 2, '2025-10-23 16:13:08', 150.00),
+(3, 3, 1, 2, '2025-10-23 16:25:22', 150.00),
+(4, 3, 1, 2, '2025-10-23 16:35:37', 150.00),
+(5, 3, 1, 2, '2025-11-05 09:29:19', 65.00),
+(6, 3, 1, 2, '2025-11-05 09:30:53', 10.00),
+(7, 3, 1, 2, '2025-11-05 09:35:06', 150.00),
+(8, 3, 1, 2, '2025-11-05 09:35:48', 45.00),
+(9, 3, 1, 2, '2025-11-05 09:40:04', 150.00),
+(10, 3, 1, 2, '2025-11-15 03:43:02', 185.00),
+(11, 3, 1, 2, '2025-11-15 05:28:20', 45.00),
+(12, 3, 1, 2, '2025-11-15 05:36:55', 20.00),
+(13, 3, 1, 2, '2025-11-15 07:28:03', 150.00);
 
 -- --------------------------------------------------------
 
@@ -383,27 +326,12 @@ CREATE TABLE `perfiles` (
 --
 
 INSERT INTO `perfiles` (`id_perfil`, `id_usuario`, `nombres`, `apellidos`, `telefono`) VALUES
-(1, 1, 'Admin', 'Tinkuy', '999888777'),
-(2, 2, 'Juan', 'Perez', '987654321'),
-(3, 3, 'Ana', 'Gomez', '912345678'),
-(4, 4, 'elias j', 'arango', ''),
-(7, 7, 'marta', 'torres', '999999999'),
-(8, 8, 'jesus', 'torres', '999999999'),
-(9, 9, 'Jose', 'Garcia', NULL),
-(10, 10, 'user', 'user', '999999999'),
-(11, 11, 'juan E', 'CARA', '999999999'),
-(34, 100, 'Admin', 'Tinkuy', '987654321'),
-(35, 101, 'Vendedor', 'Artesano', '987654322'),
-(36, 102, 'Cliente', 'Comprador', '987654323'),
-(37, 103, 'Cliente', 'Demo', NULL),
-(38, 106, 'JE', 'AS', '994165842'),
-(39, 107, 'elias', 'AS', '994165842'),
-(40, 108, 'elias', 'ASS', '994165842'),
-(41, 109, 'elias', 'ASSSS', '999999999'),
-(42, 110, 'Juan Elias', 'AS', NULL),
-(43, 111, 'Jeanpierre Amilcar', 'Casimiro Guerra', '994220530'),
-(44, 112, 'Crisdel Aldemir', 'Gonzales Canales', NULL),
-(45, 113, 'Diego Anderson', 'Becerra Burga', NULL);
+(1, 1, 'Admin', 'Test', '987654321'),
+(2, 2, 'Vendedor', 'Test', '987654322'),
+(3, 3, 'Cliente', 'Test', '987654323'),
+(4, 4, 'Jeanpierre Amilcar', 'Casimiro Guerra', '994220530'),
+(5, 5, 'Crisdel Aldemir', 'Gonzales Canales', NULL),
+(6, 6, 'Diego Anderson', 'Becerra Burga', NULL);
 
 -- --------------------------------------------------------
 
@@ -431,15 +359,15 @@ INSERT INTO `productos` (`id_producto`, `id_categoria`, `id_vendedor`, `nombre_p
 (2, 22, 2, 'Tela Andina \"Inti\"', 'Tela de 1.5m x 1m con diseños solares, teñido natural.', 'tela.jpeg\r\n', 'inactivo', '2025-10-22 20:53:09'),
 (3, 17, 2, 'Gorro Chullo Tradicional', 'Gorro chullo con orejeras, tejido a mano.', 'gorro-artesanal-unixes.png', 'activo', '2025-10-22 20:53:09'),
 (4, 30, 2, 'Guantes de lana', 'Guantes de lana de oveja', 'prod_68fadded17d71.png', 'activo', '2025-10-23 21:01:17'),
-(100, 100, 101, 'Chompa de Alpaca Premium', 'Chompa tejida a mano con lana de alpaca 100% natural. Diseño tradicional andino.', 'chompa_alpaca_1.jpg', 'inactivo', '2025-11-15 03:43:02'),
-(101, 101, 101, 'Gorro Andino', 'Gorro tejido con diseños geométricos tradicionales. Protección contra el frío.', 'gorro_andino_1.jpg', 'inactivo', '2025-11-15 03:43:02'),
-(102, 102, 101, 'Manta Cusqueña', 'Manta artesanal de Cusco con tintes naturales. Ideal para decoración.', 'manta_cusco_1.jpg', 'inactivo', '2025-11-15 03:43:02'),
-(103, 16, 2, 'Ojotas', 'suela gruesa de neumático o llanta reciclado, con tiras del mismo material para sujetar el pie.', 'producto_1764429190.png', 'activo', '2025-11-29 10:13:10'),
-(104, 10, 2, 'Poncho Artesanal Corto', 'Poncho en colores surtidos, elaborado 100% en algodón, tamaño 120*72 cm, 240 gr', 'producto_1764430653.jpg', 'activo', '2025-11-29 10:37:33'),
-(105, 29, 2, 'Quena', '', 'producto_1764437053.png', 'activo', '2025-11-29 12:24:13'),
-(106, 21, 2, 'Cinturón Mujer, Bordado a Mano en Perú, Lana Artesanal', '', 'producto_1764437719.png', 'activo', '2025-11-29 12:35:19'),
-(107, 29, 2, 'Zampolla', '', 'producto_1764439324.png', 'activo', '2025-11-29 13:02:04'),
-(108, 20, 2, 'Chalina', '', 'producto_1764464104.png', 'activo', '2025-11-29 19:55:04');
+(5, 31, 2, 'Chompa de Alpaca Premium', 'Chompa tejida a mano con lana de alpaca 100% natural. Diseño tradicional andino.', 'chompa_alpaca_1.jpg', 'inactivo', '2025-11-15 03:43:02'),
+(6, 32, 2, 'Gorro Andino', 'Gorro tejido con diseños geométricos tradicionales. Protección contra el frío.', 'gorro_andino_1.jpg', 'inactivo', '2025-11-15 03:43:02'),
+(7, 33, 2, 'Manta Cusqueña', 'Manta artesanal de Cusco con tintes naturales. Ideal para decoración.', 'manta_cusco_1.jpg', 'inactivo', '2025-11-15 03:43:02'),
+(8, 16, 2, 'Ojotas', 'suela gruesa de neumático o llanta reciclado, con tiras del mismo material para sujetar el pie.', 'producto_1764429190.png', 'activo', '2025-11-29 10:13:10'),
+(9, 10, 2, 'Poncho Artesanal Corto', 'Poncho en colores surtidos, elaborado 100% en algodón, tamaño 120*72 cm, 240 gr', 'producto_1764430653.jpg', 'activo', '2025-11-29 10:37:33'),
+(10, 29, 2, 'Quena', '', 'producto_1764437053.png', 'activo', '2025-11-29 12:24:13'),
+(11, 21, 2, 'Cinturón Mujer, Bordado a Mano en Perú, Lana Artesanal', '', 'producto_1764437719.png', 'activo', '2025-11-29 12:35:19'),
+(12, 29, 2, 'Zampolla', '', 'producto_1764439324.png', 'activo', '2025-11-29 13:02:04'),
+(13, 20, 2, 'Chalina', '', 'producto_1764464104.png', 'activo', '2025-11-29 19:55:04');
 
 -- --------------------------------------------------------
 
@@ -493,10 +421,8 @@ CREATE TABLE `tarjetas_usuario` (
 --
 
 INSERT INTO `tarjetas_usuario` (`id_tarjeta`, `id_usuario`, `nombre_tarjeta`, `ultimos_4_digitos`, `expiracion`, `tipo`) VALUES
-(1, 11, 'Elias', '4242', '12/25', 'Visa'),
-(100, 102, 'Cliente Comprador', '4444', '12/28', 'Visa'),
-(101, 102, 'Cliente Comprador', '5555', '06/27', 'Mastercard'),
-(102, 1, 'Elias', '4242', '11/11', 'Visa');
+(1, 3, 'Cliente Comprador', '4444', '12/28', 'Visa'),
+(2, 3, 'Cliente Comprador', '5555', '06/27', 'Mastercard');
 
 -- --------------------------------------------------------
 
@@ -528,10 +454,10 @@ INSERT INTO `transacciones` (`id_transaccion`, `id_pedido`, `metodo_pago`, `mont
 (7, 7, 'Tarjeta (Simulada)', 150.00, 'txn_4f121973bb88d09e4301ee92d985d4ef', 'exitoso', '2025-11-05 09:35:06'),
 (8, 8, 'Tarjeta (Simulada)', 45.00, 'txn_5767c54a6d1ffa117b4fe9d34622425e', 'exitoso', '2025-11-05 09:35:48'),
 (9, 9, 'Tarjeta (Simulada)', 150.00, 'txn_489ee7bf288f5836900c3230f053a657', 'exitoso', '2025-11-05 09:40:04'),
-(100, 100, 'Tarjeta (Simulada)', 185.00, 'txn_test_abc123def456', 'exitoso', '2025-11-15 03:43:02'),
-(101, 101, 'Tarjeta (Simulada)', 45.00, 'txn_335cbd6ea5fa8faada906d2ff4c925dc', 'exitoso', '2025-11-15 05:28:20'),
-(102, 102, 'Tarjeta (Simulada)', 20.00, 'txn_be9736911f9219307d7c5df29a1ec6c9', 'exitoso', '2025-11-15 05:36:55'),
-(103, 103, 'Tarjeta (Simulada)', 150.00, 'txn_4ba3cdc74f27ada5d795cd06d6e27f3d', 'exitoso', '2025-11-15 07:28:03');
+(10, 10, 'Tarjeta (Simulada)', 185.00, 'txn_test_abc123def456', 'exitoso', '2025-11-15 03:43:02'),
+(11, 11, 'Tarjeta (Simulada)', 45.00, 'txn_335cbd6ea5fa8faada906d2ff4c925dc', 'exitoso', '2025-11-15 05:28:20'),
+(12, 12, 'Tarjeta (Simulada)', 20.00, 'txn_be9736911f9219307d7c5df29a1ec6c9', 'exitoso', '2025-11-15 05:36:55'),
+(13, 13, 'Tarjeta (Simulada)', 150.00, 'txn_4ba3cdc74f27ada5d795cd06d6e27f3d', 'exitoso', '2025-11-15 07:28:03');
 
 -- --------------------------------------------------------
 
@@ -554,27 +480,12 @@ CREATE TABLE `usuarios` (
 --
 
 INSERT INTO `usuarios` (`id_usuario`, `id_rol`, `estado`, `usuario`, `email`, `clave_hash`, `fecha_registro`) VALUES
-(1, 1, 'activo', 'admin', 'admin@tinkuy.com', '$2y$10$1A4MNM72rzu5/ZXQVXV8hOIgun.nn3//Q1GsjSmSi/fvub3gztmme', '2025-10-22 20:53:09'),
-(2, 2, 'activo', 'vendedor_juan', 'juan@vendedor.com', '$2y$10$CoaekmqjhuFRckcuWnFv5ObaPsGFB5cfSv3YDFm5GwgGL7EjdcGKa', '2025-10-22 20:53:09'),
-(3, 3, 'activo', 'cliente_ana', 'ana@cliente.com', '$2y$10$fV/c.g.0.i9.P0E1jZ1x2eX9jY7q8U3n.X7c7k.i.P4b4k.y.Z0aC', '2025-10-22 20:53:09'),
-(4, 3, 'activo', 'elias', 'eliasjuan@gmail.com', '$2y$10$buM3scf3ZkjeTFNFeVVJwO52kumuA.aoi0SEDpDfIjRWvCOKisu6K', '2025-10-23 12:29:57'),
-(7, 2, 'activo', 'Marta', 'marta@gmail.com', '$2y$10$AnoNLtCuupciKpdNnLfd0uM8rIZFdMv/YrE8yEzMqTtg9kSaCWtFa', '2025-10-24 16:22:38'),
-(8, 3, 'activo', 'jesus', 'jesus@tinkuy.com', '$2y$10$ney2s8YdHF/EPl/pVZhi0uF.RET5Op/iA6C5l9yI9Tsfri75jkSUq', '2025-10-24 16:49:59'),
-(9, 3, 'activo', 'jose123', 'jose@gmail.com', '$2y$10$Rqdc32Ynxz0rbbackNF9p.HaRYTDyuvEULB6TWlp8Ha1vWNb0mCP6', '2025-10-25 05:31:53'),
-(10, 3, 'activo', 'user', 'user@gmail.com', '$2y$10$derMbCiyMQcoAH3dLzpmxeGw3fH8yOgdL04ZJXsAYDyM8mKDfNoeO', '2025-10-25 09:29:47'),
-(11, 3, 'activo', 'JUAN', 'juan@gmail.com', '$2y$10$Kc1f6pv1LCUmbkFwDGqWieYVZBXCMd8SnVaEj/gR.jBYjWj07ASy.', '2025-11-05 07:59:55'),
-(100, 1, 'activo', 'admin_test', 'admin.test@tinkuy.com', '$2y$10$vZL5gP8Z5qX5Z5qX5qX5qO.K5qX5qX5qX5qX5qX5qX5qX5qX5qX5q', '2025-11-15 03:43:02'),
-(101, 2, 'inactivo', 'vendedor_test', 'vendedor.test@tinkuy.com', '$2y$10$vZL5gP8Z5qX5Z5qX5qX5qO.K5qX5qX5qX5qX5qX5qX5qX5qX5qX5q', '2025-11-15 03:43:02'),
-(102, 3, 'activo', 'cliente_test', 'cliente.test@tinkuy.com', '$2y$10$vZL5gP8Z5qX5Z5qX5qX5qO.K5qX5qX5qX5qX5qX5qX5qX5qX5qX5q', '2025-11-15 03:43:02'),
-(103, 3, 'activo', 'cliente_demo', 'cliente.demo@example.com', '$2y$10$onkNXrOZflHRGR3fz9WRUuJ0Gi7732winY7wAmgcpSNlBrxCDiWpK', '2025-11-15 04:07:53'),
-(106, 1, 'activo', 'JEAS', 'eliasjuan17xdxd@gmail.com', '$2y$10$bcCvkb3MflxG0I2MBuvnzO1ZVTsKtey69s..kEARUBe2q1rigwO8y', '2025-11-15 05:52:32'),
-(107, 1, 'activo', 'Ju', 'n00334240@upn.pe', '$2y$10$PlZJ.acBOrZo33e9b8GOEeVGLQn/Ktxz33Ia8PEuLtd39z260nR.u', '2025-11-15 06:04:20'),
-(108, 2, 'activo', 'vendedor-JEAS', 'eliasjuanxd17@gmail.com', '$2y$10$tEdZ/H85WekwlLzMfyJEcO3QU0QapuTll97OcARP566cQAyut9c86', '2025-11-15 06:10:42'),
-(109, 3, 'activo', 'JEAS1', 'eliasjuanxd17@hotmail.com', '$2y$10$j94BB4Yq.ak1L6GIJjrILO.wAev5lEY.pAEVRpDzOzfPPuTEAsbEW', '2025-11-15 06:12:51'),
-(110, 3, 'activo', 'admin1WQSA', 'AD@upn.pe', '$2y$10$JPjzcREPXEiT4zXmCzyoxud6b1vaE0dKpsW351DyTCURC2V9aCvpq', '2025-12-06 08:54:57'),
-(111, 1, 'activo', 'Jeanpierre', 'casimirom543@gmail.com', '$2y$10$TVLxltApZjOFQaf4gQwONOxhVFqxLqPAIqin5kEH420AexaMPg1.u', '2026-05-11 19:49:31'),
-(112, 2, 'activo', 'crisdel', 'crisdel@gmail.com', '$2y$10$R8EO.gknoiZnhHlI8hbt9.P8ucpTo1MQqlHBRoxs71pVvNrqxth.e', '2026-05-11 19:52:21'),
-(113, 3, 'activo', 'diego', 'diego@gmail.com', '$2y$10$G.jnjQvFyCySMbQOy6bo3.UxcT9mWoohpcAeJ/bHe.lkprg5O/nPS', '2026-05-11 19:53:56');
+(1, 1, 'activo', 'admin_test', 'admin.test@tinkuy.com', '$2y$10$vZL5gP8Z5qX5Z5qX5qX5qO.K5qX5qX5qX5qX5qX5qX5qX5qX5qX5q', '2025-11-15 03:43:02'),
+(2, 2, 'activo', 'vendedor_test', 'vendedor.test@tinkuy.com', '$2y$10$vZL5gP8Z5qX5Z5qX5qX5qO.K5qX5qX5qX5qX5qX5qX5qX5qX5qX5q', '2025-11-15 03:43:02'),
+(3, 3, 'activo', 'cliente_test', 'cliente.test@tinkuy.com', '$2y$10$vZL5gP8Z5qX5Z5qX5qX5qO.K5qX5qX5qX5qX5qX5qX5qX5qX5qX5q', '2025-11-15 03:43:02'),
+(4, 1, 'activo', 'Jeanpierre', 'casimirom543@gmail.com', '$2y$10$TVLxltApZjOFQaf4gQwONOxhVFqxLqPAIqin5kEH420AexaMPg1.u', '2026-05-11 19:49:31'),
+(5, 2, 'activo', 'crisdel', 'crisdel@gmail.com', '$2y$10$R8EO.gknoiZnhHlI8hbt9.P8ucpTo1MQqlHBRoxs71pVvNrqxth.e', '2026-05-11 19:52:21'),
+(6, 3, 'activo', 'diego', 'diego@gmail.com', '$2y$10$G.jnjQvFyCySMbQOy6bo3.UxcT9mWoohpcAeJ/bHe.lkprg5O/nPS', '2026-05-11 19:53:56');
 
 -- --------------------------------------------------------
 
@@ -605,23 +516,23 @@ INSERT INTO `variantes_producto` (`id_variante`, `id_producto`, `talla`, `color`
 (4, 3, 'Único', 'Gris', 'GORRO-GRIS', 45.00, 12, 'gorro-artesanal-unixes.png', 'activo'),
 (5, 4, 's', 'gris', 'GUA-4-s-gris', 20.00, 9, NULL, 'activo'),
 (6, 4, 's', 'rojo', 'GUA-4-s-rojo', 10.00, 10, 'variante_4_1761278451.png', 'activo'),
-(100, 100, 'S', 'Rojo', NULL, 150.00, 5, 'chompa_alpaca_rojo_s.jpg', 'activo'),
-(101, 100, 'M', 'Rojo', NULL, 150.00, 8, 'chompa_alpaca_rojo_m.jpg', 'activo'),
-(102, 100, 'L', 'Azul', NULL, 150.00, 7, 'chompa_alpaca_azul_l.jpg', 'activo'),
-(103, 101, 'Única', 'Multicolor', NULL, 35.00, 25, 'gorro_multicolor.jpg', 'activo'),
-(104, 101, 'Única', 'Verde', NULL, 35.00, 25, 'gorro_verde.jpg', 'activo'),
-(105, 102, 'Grande', 'Natural', NULL, 80.00, 8, 'manta_natural_g.jpg', 'activo'),
-(106, 102, 'Pequeña', 'Natural', NULL, 60.00, 7, 'manta_natural_p.jpg', 'activo'),
-(107, 103, '35', 'negro', 'OJO-103-35-negro', 15.00, 20, NULL, 'activo'),
-(108, 103, '36', 'negro', 'OJO-103-36-negro', 15.00, 20, NULL, 'activo'),
-(109, 103, '40', 'negro', 'OJO-103-40-negro', 16.00, 20, NULL, 'activo'),
-(110, 104, 's', 'blanco con rayas', 'PON-104-s-blanco con rayas', 50.00, 10, NULL, 'activo'),
-(111, 104, 'm', 'blanco con rayas', 'PON-104-m-blanco con rayas', 50.00, 10, NULL, 'activo'),
-(112, 105, 'Unica', 'Estandar', 'QUE-105-Unica-Estandar', 25.00, 5, NULL, 'activo'),
-(113, 106, 'M', 'Marron', 'CIN-106-M-Marron', 50.00, 10, NULL, 'activo'),
-(114, 106, 'S', 'Marron', 'CIN-106-S-Marron', 20.00, 10, 'variante_106_1764437748.png', 'activo'),
-(115, 107, 'Única', 'Estándar', 'ZAM-107-Única-Estándar', 25.00, 12, NULL, 'activo'),
-(116, 108, 'Única', 'Estándar', 'CHA-108-Única-Estándar', 50.00, 12, NULL, 'activo');
+(7, 5, 'S', 'Rojo', NULL, 150.00, 5, 'chompa_alpaca_rojo_s.jpg', 'activo'),
+(8, 5, 'M', 'Rojo', NULL, 150.00, 8, 'chompa_alpaca_rojo_m.jpg', 'activo'),
+(9, 5, 'L', 'Azul', NULL, 150.00, 7, 'chompa_alpaca_azul_l.jpg', 'activo'),
+(10, 6, 'Única', 'Multicolor', NULL, 35.00, 25, 'gorro_multicolor.jpg', 'activo'),
+(11, 6, 'Única', 'Verde', NULL, 35.00, 25, 'gorro_verde.jpg', 'activo'),
+(12, 7, 'Grande', 'Natural', NULL, 80.00, 8, 'manta_natural_g.jpg', 'activo'),
+(13, 7, 'Pequeña', 'Natural', NULL, 60.00, 7, 'manta_natural_p.jpg', 'activo'),
+(14, 8, '35', 'negro', 'OJO-103-35-negro', 15.00, 20, NULL, 'activo'),
+(15, 8, '36', 'negro', 'OJO-103-36-negro', 15.00, 20, NULL, 'activo'),
+(16, 8, '40', 'negro', 'OJO-103-40-negro', 16.00, 20, NULL, 'activo'),
+(17, 9, 's', 'blanco con rayas', 'PON-104-s-blanco con rayas', 50.00, 10, NULL, 'activo'),
+(18, 9, 'm', 'blanco con rayas', 'PON-104-m-blanco con rayas', 50.00, 10, NULL, 'activo'),
+(19, 10, 'Unica', 'Estandar', 'QUE-105-Unica-Estandar', 25.00, 5, NULL, 'activo'),
+(20, 11, 'M', 'Marron', 'CIN-106-M-Marron', 50.00, 10, NULL, 'activo'),
+(21, 11, 'S', 'Marron', 'CIN-106-S-Marron', 20.00, 10, 'variante_106_1764437748.png', 'activo'),
+(22, 12, 'Única', 'Estándar', 'ZAM-107-Única-Estándar', 25.00, 12, NULL, 'activo'),
+(23, 13, 'Única', 'Estándar', 'CHA-108-Única-Estándar', 50.00, 12, NULL, 'activo');
 
 --
 -- Índices para tablas volcadas

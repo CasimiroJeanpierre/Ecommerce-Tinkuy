@@ -76,32 +76,6 @@ $pagina_actual = 'index'; // Para el navbar
             </button>
         </div>
 
-        <!-- Sección de Búsqueda Inteligente con IA -->
-        <section class="container my-5">
-            <div class="row align-items-center">
-                <div class="col-md-6">
-                    <h4 class="mb-3">¿Buscas algo en especial?</h4>
-                    <p>Escribe lo que quieras encontrar y nuestro <strong>Asistente Inteligente (IA)</strong> te
-                        recomendará productos.</p>
-                </div>
-                <div class="col-md-6">
-                    <form id="iaSearchForm">
-                        <div class="input-group">
-                            <input type="text" id="iaSearchInput" class="form-control" placeholder="Buscar productos..."
-                                aria-label="Buscar productos">
-                            <button class="btn btn-outline-primary" type="submit">
-                                <i class="bi bi-search"></i> Buscar
-                            </button>
-                        </div>
-                    </form>
-                    <div id="iaSuggestion" class="mt-3 text-muted"></div>
-                </div>
-            </div>
-        </section>
-
-        <section class="container my-5">
-        </section>
-
         <section class="container my-5">
             <h2 class="text-center mb-4">Más Vendidos</h2>
             <div class="row">
@@ -148,56 +122,6 @@ $pagina_actual = 'index'; // Para el navbar
     ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" defer></script>
-
-    <!-- Script del Asistente Inteligente IA -->
-    <script>
-        document.getElementById("iaSearchForm").addEventListener("submit", async function (e) {
-            e.preventDefault();
-
-            const query = document.getElementById("iaSearchInput").value.trim();
-            const suggestionDiv = document.getElementById("iaSuggestion");
-
-            if (!query) {
-                suggestionDiv.innerHTML = "Por favor, escribe algo para buscar.";
-                return;
-            }
-
-            // Mensaje inicial
-            suggestionDiv.innerHTML = "🤖 Pensando en la mejor recomendación...";
-
-            try {
-                // Usar ruta relativa desde public/index.php hacia deepseek_search.php (mismo directorio)
-                const res = await fetch("deepseek_search.php", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ query })
-                });
-
-                if (!res.ok) {
-                    const text = await res.text();
-                    console.error("❌ Error HTTP al llamar al asistente:", res.status, text);
-                    throw new Error('Error HTTP ' + res.status);
-                }
-
-                const data = await res.json();
-                console.log("✅ Respuesta IA:", data);
-
-                // Mostrar recomendación
-                suggestionDiv.innerHTML = "<b>Recomendación IA:</b> " + (data.texto || "No se recibió explicación.");
-
-                // Redirigir después de 10s si hay keyword (usar el controlador central)
-                if (data.keyword) {
-                    setTimeout(() => {
-                        window.location.href = "<?= $controller_url ?>?page=products&buscar=" + encodeURIComponent(data.keyword);
-                    }, 10000);
-                }
-
-            } catch (err) {
-                console.error("❌ Error con el asistente:", err);
-                suggestionDiv.innerHTML = "❌ Error con el asistente. Revisa la consola.";
-            }
-        });
-    </script>
 
 </body>
 

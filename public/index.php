@@ -692,10 +692,6 @@ switch ($page) {
     /* =======================
      * 🧩 MISCELÁNEO
      * ======================= */
-    case 'deepseek_search':
-        require BASE_PATH . '/src/Views/misc/deepseek_search.php';
-        break;
-
     case 'about':
         require BASE_PATH . '/src/Views/misc/about.php';
         break;

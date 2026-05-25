@@ -166,10 +166,7 @@ run_tests_live.bat testdox
 
 Toda la documentación técnica está organizada en la carpeta **`docs/`**:
 
-- **[LEEME_PRIMERO.md](LEEME_PRIMERO.md)** - Guía rápida del Asistente IA 🤖
 - **[docs/README.md](docs/README.md)** - Índice completo de documentación
-- **[docs/ASISTENTE_IA.md](docs/ASISTENTE_IA.md)** - Documentación técnica del asistente de búsqueda
-- **[docs/DIAGRAMA_FLUJO_IA.md](docs/DIAGRAMA_FLUJO_IA.md)** - Diagramas de arquitectura
 - **[docs/TESTING.md](docs/TESTING.md)** - Guía de pruebas unitarias
 
 ---
