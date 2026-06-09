@@ -31,6 +31,14 @@ try {
     $resultado_carrito = $paymentController->getDetallesCarrito($_SESSION['carrito']);
     $carrito_items = $resultado_carrito['items'];
     $total_general = $resultado_carrito['total'];
+
+    $descuento_aplicado = 0;
+    $total_con_descuento = $total_general;
+    if (isset($_SESSION['cupon'])) {
+        $descuento_aplicado = calcularDescuentoAplicado($total_general, (float) $_SESSION['cupon']['descuento']);
+        $total_con_descuento = calcularTotalFinal($total_general, $descuento_aplicado);
+    }
+
     // Tarjetas guardadas del usuario (simuladas)
     $tarjetas_guardadas = $paymentController->getTarjetasUsuario($id_usuario);
 } catch (Exception $e) {
@@ -95,6 +103,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $total_seguro += $precios_reales[$id_variante] * $item['cantidad'];
             }
 
+            // Aplicar descuento al total seguro antes de guardar
+            if (isset($_SESSION['cupon'])) {
+                $descuento_seguro = calcularDescuentoAplicado($total_seguro, (float) $_SESSION['cupon']['descuento']);
+                $total_seguro = calcularTotalFinal($total_seguro, $descuento_seguro);
+            }
+
             // Crear el Pedido
             $stmt_pedido = $conn->prepare("
                 INSERT INTO pedidos (id_usuario, id_direccion_envio, id_estado_pedido, total_pedido, fecha_pedido) 
@@ -147,6 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Limpiar carrito y redirigir
             $_SESSION['carrito'] = [];
+            unset($_SESSION['cupon']); // Limpiar cupón tras compra exitosa
             $_SESSION['pedido_exitoso_id'] = $nuevo_pedido_id;
             header("Location: " . $base_url . "?page=gracias&order_id=" . $nuevo_pedido_id);
             exit;
@@ -297,7 +312,7 @@ $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
                     <button class="w-100 btn btn-success btn-lg" type="submit" <?php if (empty($direcciones))
                         echo 'disabled'; ?>>
                         <i class="bi bi-lock-fill"></i>
-                        Pagar S/ <?= number_format($total_general, 2) ?>
+                        Pagar S/ <?= number_format($total_con_descuento, 2) ?>
                     </button>
                 </div>
 
@@ -320,9 +335,20 @@ $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
                                 <span class="text-muted">S/ <?= number_format($item['subtotal'], 2) ?></span>
                             </li>
                         <?php endforeach; ?>
+
+                        <?php if (isset($_SESSION['cupon'])): ?>
+                            <li class="list-group-item d-flex justify-content-between bg-light">
+                                <div class="text-success">
+                                    <h6 class="my-0">Cupón aplicado</h6>
+                                    <small><?= htmlspecialchars($_SESSION['cupon']['codigo']) ?></small>
+                                </div>
+                                <span class="text-success">−S/ <?= number_format($descuento_aplicado, 2) ?></span>
+                            </li>
+                        <?php endif; ?>
+
                         <li class="list-group-item d-flex justify-content-between">
                             <span>Total (S/)</span>
-                            <strong>S/ <?= number_format($total_general, 2) ?></strong>
+                            <strong>S/ <?= number_format($total_con_descuento, 2) ?></strong>
                         </li>
                     </ul>
                 </div>

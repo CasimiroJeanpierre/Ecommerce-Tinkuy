@@ -480,13 +480,13 @@ CREATE TABLE `usuarios` (
 --
 
 INSERT INTO `usuarios` (`id_usuario`, `id_rol`, `estado`, `usuario`, `email`, `clave_hash`, `fecha_registro`) VALUES
-(1, 1, 'activo', 'admin_test', 'admin.test@tinkuy.com', '$2y$10$vZL5gP8Z5qX5Z5qX5qX5qO.K5qX5qX5qX5qX5qX5qX5qX5qX5qX5q', '2025-11-15 03:43:02'),
-(2, 2, 'activo', 'vendedor_test', 'vendedor.test@tinkuy.com', '$2y$10$vZL5gP8Z5qX5Z5qX5qX5qO.K5qX5qX5qX5qX5qX5qX5qX5qX5qX5q', '2025-11-15 03:43:02'),
-(3, 3, 'activo', 'cliente_test', 'cliente.test@tinkuy.com', '$2y$10$vZL5gP8Z5qX5Z5qX5qX5qO.K5qX5qX5qX5qX5qX5qX5qX5qX5qX5q', '2025-11-15 03:43:02'),
+(1, 1, 'activo', 'admin_test', 'admin.test@tinkuy.com', '$2a$10$GpLtU7CS6a8RDgS7bIFDLeZUoHkNGX8GPu/csCANFV5fwRwL9Hi4O', '2025-11-15 03:43:02'),
+(2, 2, 'activo', 'vendedor_test', 'vendedor.test@tinkuy.com', '$2a$10$GpLtU7CS6a8RDgS7bIFDLeZUoHkNGX8GPu/csCANFV5fwRwL9Hi4O', '2025-11-15 03:43:02'),
+(3, 3, 'activo', 'cliente_test', 'cliente.test@tinkuy.com', '$2a$10$GpLtU7CS6a8RDgS7bIFDLeZUoHkNGX8GPu/csCANFV5fwRwL9Hi4O', '2025-11-15 03:43:02'),
 (4, 1, 'activo', 'Jeanpierre', 'casimirom543@gmail.com', '$2y$10$TVLxltApZjOFQaf4gQwONOxhVFqxLqPAIqin5kEH420AexaMPg1.u', '2026-05-11 19:49:31'),
 (5, 2, 'activo', 'crisdel', 'crisdel@gmail.com', '$2y$10$R8EO.gknoiZnhHlI8hbt9.P8ucpTo1MQqlHBRoxs71pVvNrqxth.e', '2026-05-11 19:52:21'),
 (6, 3, 'activo', 'diego', 'diego@gmail.com', '$2y$10$G.jnjQvFyCySMbQOy6bo3.UxcT9mWoohpcAeJ/bHe.lkprg5O/nPS', '2026-05-11 19:53:56');
-
+                                              
 -- --------------------------------------------------------
 
 --

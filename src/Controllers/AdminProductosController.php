@@ -263,30 +263,50 @@ class AdminProductosController
 
                         if ($espacios_disponibles > 0) {
                             $stmt_img = $this->conn->prepare("INSERT INTO producto_imagenes (id_producto, ruta_imagen) VALUES (?, ?)");
-                            $total_files = count($_FILES['imagenes_adicionales']['name']);
+
+                            // Normalizamos para manejar correctamente los arrays de archivos o archivos únicos
+                            $nombres = is_array($_FILES['imagenes_adicionales']['name']) ? $_FILES['imagenes_adicionales']['name'] : [$_FILES['imagenes_adicionales']['name']];
+                            $errores = is_array($_FILES['imagenes_adicionales']['error']) ? $_FILES['imagenes_adicionales']['error'] : [$_FILES['imagenes_adicionales']['error']];
+                            $tams = is_array($_FILES['imagenes_adicionales']['size']) ? $_FILES['imagenes_adicionales']['size'] : [$_FILES['imagenes_adicionales']['size']];
+                            $tmps = is_array($_FILES['imagenes_adicionales']['tmp_name']) ? $_FILES['imagenes_adicionales']['tmp_name'] : [$_FILES['imagenes_adicionales']['tmp_name']];
+
+                            $total_files = count($nombres);
                             $agregadas = 0;
 
                             for ($i = 0; $i < $total_files; $i++) {
                                 if ($agregadas >= $espacios_disponibles)
                                     break;
-                                if ($_FILES['imagenes_adicionales']['error'][$i] == UPLOAD_ERR_OK) {
-                                    $fileName = $_FILES['imagenes_adicionales']['name'][$i];
+
+                                // Si no hay archivo subido en este input, pasamos a la siguiente iteración
+                                if ($errores[$i] == UPLOAD_ERR_NO_FILE) {
+                                    continue;
+                                }
+
+                                if ($errores[$i] == UPLOAD_ERR_OK) {
+                                    $fileName = $nombres[$i];
                                     $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
                                     $allowedExt = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 
                                     if (!in_array($fileExt, $allowedExt)) {
-                                        throw new Exception("El formato de una de las imágenes adicionales no está permitido.");
+                                        throw new Exception("El formato de la imagen adicional $fileName no está permitido.");
                                     }
 
-                                    if ($_FILES['imagenes_adicionales']['size'][$i] <= 2 * 1024 * 1024) {
+                                    if ($tams[$i] <= 2 * 1024 * 1024) {
                                         $nom_limpio = preg_replace('/[^a-zA-Z0-9.\-_]/', '_', basename($fileName));
+                                        $nom_limpio = time() . '_' . $i . '_' . $nom_limpio; // Hacer único el nombre
                                         $dest = BASE_PATH . '/public/img/productos/' . $nom_limpio;
-                                        if (move_uploaded_file($_FILES['imagenes_adicionales']['tmp_name'][$i], $dest)) {
+                                        if (move_uploaded_file($tmps[$i], $dest)) {
                                             $stmt_img->bind_param("is", $id_producto, $nom_limpio);
                                             $stmt_img->execute();
                                             $agregadas++;
+                                        } else {
+                                            throw new Exception("Error al guardar la imagen adicional: " . $fileName);
                                         }
+                                    } else {
+                                        throw new Exception("La imagen adicional '" . $fileName . "' supera el límite de 2MB.");
                                     }
+                                } elseif ($errores[$i] !== UPLOAD_ERR_NO_FILE) {
+                                    throw new Exception("Ocurrió un error al subir la imagen (Código: " . $errores[$i] . ").");
                                 }
                             }
                             $stmt_img->close();
@@ -361,7 +381,6 @@ class AdminProductosController
 
                 // --- ACCIÓN: ACTUALIZAR / DESACTIVAR VARIANTES EXISTENTES ---
                 elseif (isset($_POST['accion']) && $_POST['accion'] === 'actualizar_variantes') {
-                    $this->conn->begin_transaction();
                     $stmt_update = $this->conn->prepare("UPDATE variantes_producto SET precio = ?, stock = ? WHERE id_variante = ? AND id_producto = ?");
                     $stmt_desactivar = $this->conn->prepare("UPDATE variantes_producto SET estado = 'inactivo' WHERE id_variante = ? AND id_producto = ?");
 
@@ -382,11 +401,13 @@ class AdminProductosController
                             }
                         }
                     }
-                    $this->conn->commit();
                     $stmt_update->close();
                     $stmt_desactivar->close();
                     $mensaje_exito = "Lista de variantes actualizada.";
                 }
+
+                // Confirmar todas las transacciones realizadas (imágenes, variantes o producto general)
+                $this->conn->commit();
 
             } catch (Exception $e) {
                 $this->conn->rollback();

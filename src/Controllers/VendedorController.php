@@ -169,25 +169,39 @@ class VendedorController
                 // Insertar Múltiples Imágenes Adicionales (Respetando Límite de 9)
                 if (isset($_FILES['imagenes_adicionales'])) {
                     $stmt_img = $this->conn->prepare("INSERT INTO producto_imagenes (id_producto, ruta_imagen) VALUES (?, ?)");
-                    $total_files = count($_FILES['imagenes_adicionales']['name']);
+
+                    // Normalizamos las variables para manejar correctamente tanto arrays multiples como archivos individuales
+                    $nombres = is_array($_FILES['imagenes_adicionales']['name']) ? $_FILES['imagenes_adicionales']['name'] : [$_FILES['imagenes_adicionales']['name']];
+                    $errores = is_array($_FILES['imagenes_adicionales']['error']) ? $_FILES['imagenes_adicionales']['error'] : [$_FILES['imagenes_adicionales']['error']];
+                    $tams = is_array($_FILES['imagenes_adicionales']['size']) ? $_FILES['imagenes_adicionales']['size'] : [$_FILES['imagenes_adicionales']['size']];
+                    $tmps = is_array($_FILES['imagenes_adicionales']['tmp_name']) ? $_FILES['imagenes_adicionales']['tmp_name'] : [$_FILES['imagenes_adicionales']['tmp_name']];
+
+                    $total_files = count($nombres);
                     $agregadas = 0;
+
                     for ($i = 0; $i < $total_files; $i++) {
                         if ($agregadas >= 9)
                             break; // Límite estricto
-                        if ($_FILES['imagenes_adicionales']['error'][$i] == UPLOAD_ERR_OK) {
-                            $fileName = $_FILES['imagenes_adicionales']['name'][$i];
+
+                        if ($errores[$i] == UPLOAD_ERR_OK) {
+                            $fileName = $nombres[$i];
                             $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
                             if (!in_array($fileExt, $allowedfileExtensions)) {
                                 throw new Exception("Tipo de archivo de imagen adicional no permitido.");
                             }
-                            if ($_FILES['imagenes_adicionales']['size'][$i] <= 2 * 1024 * 1024) {
+                            if ($tams[$i] <= 2 * 1024 * 1024) {
                                 $nom_limpio = preg_replace('/[^a-zA-Z0-9.\-_]/', '_', basename($fileName));
+                                $nom_limpio = time() . '_' . $i . '_' . $nom_limpio; // Asegurar unicidad para evitar sobrescrituras
                                 $dest = BASE_PATH . '/public/img/productos/' . $nom_limpio;
-                                if (move_uploaded_file($_FILES['imagenes_adicionales']['tmp_name'][$i], $dest)) {
+                                if (move_uploaded_file($tmps[$i], $dest)) {
                                     $stmt_img->bind_param("is", $id_producto, $nom_limpio);
                                     $stmt_img->execute();
                                     $agregadas++;
+                                } else {
+                                    throw new Exception("Error al guardar una de las imágenes adicionales en el servidor.");
                                 }
+                            } else {
+                                throw new Exception("La imagen adicional '" . $fileName . "' supera el límite permitido de 2MB.");
                             }
                         }
                     }
@@ -427,30 +441,44 @@ class VendedorController
 
                         if ($espacios_disponibles > 0) {
                             $stmt_img = $this->conn->prepare("INSERT INTO producto_imagenes (id_producto, ruta_imagen) VALUES (?, ?)");
-                            $total_files = count($_FILES['imagenes_adicionales']['name']);
+
+                            // Normalizamos las variables para manejar correctamente tanto arrays múltiples como archivos individuales
+                            $nombres = is_array($_FILES['imagenes_adicionales']['name']) ? $_FILES['imagenes_adicionales']['name'] : [$_FILES['imagenes_adicionales']['name']];
+                            $errores = is_array($_FILES['imagenes_adicionales']['error']) ? $_FILES['imagenes_adicionales']['error'] : [$_FILES['imagenes_adicionales']['error']];
+                            $tams = is_array($_FILES['imagenes_adicionales']['size']) ? $_FILES['imagenes_adicionales']['size'] : [$_FILES['imagenes_adicionales']['size']];
+                            $tmps = is_array($_FILES['imagenes_adicionales']['tmp_name']) ? $_FILES['imagenes_adicionales']['tmp_name'] : [$_FILES['imagenes_adicionales']['tmp_name']];
+
+                            $total_files = count($nombres);
                             $agregadas = 0;
 
                             for ($i = 0; $i < $total_files; $i++) {
                                 if ($agregadas >= $espacios_disponibles)
                                     break;
-                                if ($_FILES['imagenes_adicionales']['error'][$i] == UPLOAD_ERR_OK) {
-                                    $fileName = $_FILES['imagenes_adicionales']['name'][$i];
+
+                                if ($errores[$i] == UPLOAD_ERR_OK) {
+                                    $fileName = $nombres[$i];
                                     $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
                                     $allowedExt = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 
                                     if (!in_array($fileExt, $allowedExt)) {
                                         throw new Exception("El formato de una de las imágenes adicionales no está permitido.");
                                     }
-                                    if ($_FILES['imagenes_adicionales']['size'][$i] <= 2 * 1024 * 1024) {
+                                    if ($tams[$i] <= 2 * 1024 * 1024) {
                                         $nom_limpio = preg_replace('/[^a-zA-Z0-9.\-_]/', '_', basename($fileName));
                                         $nom_limpio = time() . '_' . $i . '_' . $nom_limpio;
                                         $dest = BASE_PATH . '/public/img/productos/' . $nom_limpio;
-                                        if (move_uploaded_file($_FILES['imagenes_adicionales']['tmp_name'][$i], $dest)) {
+                                        if (move_uploaded_file($tmps[$i], $dest)) {
                                             $stmt_img->bind_param("is", $id_producto, $nom_limpio);
                                             $stmt_img->execute();
                                             $agregadas++;
+                                        } else {
+                                            throw new Exception("Error al guardar la imagen: " . $fileName);
                                         }
+                                    } else {
+                                        throw new Exception("La imagen '" . $fileName . "' supera el tamaño máximo permitido de 2MB.");
                                     }
+                                } elseif ($errores[$i] !== UPLOAD_ERR_NO_FILE) {
+                                    throw new Exception("Ocurrió un error al subir la imagen adicional (Código de error: " . $errores[$i] . ").");
                                 }
                             }
                             $stmt_img->close();

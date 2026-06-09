@@ -196,7 +196,8 @@ class Security
      */
     public static function validarTimeoutSesion(): void
     {
-        $timeout_minutos = 30; // Tiempo máximo de inactividad permitido (30 min)
+        // Tiempo máximo de inactividad permitido (30 min)
+        $timeout_minutos = 30;
         $timeout_segundos = $timeout_minutos * 60;
 
         if (isset($_SESSION['usuario_id'])) {
