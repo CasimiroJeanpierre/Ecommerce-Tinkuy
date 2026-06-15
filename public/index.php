@@ -50,6 +50,128 @@ require_once BASE_PATH . '/src/Controllers/MensajesController.php';
 $base_url = BASE_URL;
 $page = $_GET['page'] ?? 'index';
 
+// --- Funciones auxiliares para reducir anidamiento en el router ---
+
+function procesarItemsCarrito(array $carrito, array $detalles_productos): array {
+    $items = [];
+    foreach ($carrito as $id_variante => $item_sesion) {
+        if (!isset($detalles_productos[$id_variante])) {
+            unset($_SESSION['carrito'][$id_variante]);
+            continue;
+        }
+        $bd = $detalles_productos[$id_variante];
+        $stock = (int) $bd['stock'];
+        $cantidad = (int) $item_sesion['cantidad'];
+        if ($cantidad > $stock) {
+            $cantidad = $stock;
+            $_SESSION['carrito'][$id_variante]['cantidad'] = $cantidad;
+        }
+        $subtotal = $bd['precio'] * $cantidad;
+        $items[] = [
+            'id_variante'  => $id_variante,
+            'nombre'       => $bd['nombre_producto'],
+            'imagen_final' => trim($bd['imagen_principal'] ?? '') ?: 'default.png',
+            'talla'        => $bd['talla'],
+            'color'        => $bd['color'],
+            'cantidad'     => $cantidad,
+            'precio'       => $bd['precio'],
+            'subtotal'     => $subtotal,
+            'stock'        => $stock,
+        ];
+    }
+    return $items;
+}
+
+function procesarAgregarCarrito($conn, string $base_url): void {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        header("Location: $base_url?page=index");
+        exit;
+    }
+    $id_variante = filter_var($_POST['id_variante'] ?? '', FILTER_VALIDATE_INT);
+    $cantidad    = filter_var($_POST['cantidad']    ?? '', FILTER_VALIDATE_INT);
+    if (!$id_variante || !$cantidad || $cantidad <= 0) {
+        $_SESSION['mensaje_error'] = "Datos inválidos para agregar al carrito.";
+        header("Location: $base_url?page=products");
+        exit;
+    }
+    $stmt = $conn->prepare("SELECT precio, stock, id_producto FROM variantes_producto WHERE id_variante = ?");
+    $stmt->bind_param("i", $id_variante);
+    $stmt->execute();
+    $variante = $stmt->get_result()->fetch_assoc();
+    if (!$variante) {
+        $_SESSION['mensaje_error'] = "El producto no existe.";
+        header("Location: $base_url?page=products");
+        exit;
+    }
+    if ($cantidad > $variante['stock']) {
+        $_SESSION['mensaje_error'] = "No hay suficiente stock.";
+        header("Location: $base_url?page=producto&id=" . $variante['id_producto']);
+        exit;
+    }
+    if (isset($_SESSION['carrito'][$id_variante])) {
+        $nueva = $_SESSION['carrito'][$id_variante]['cantidad'] + $cantidad;
+        if ($nueva > $variante['stock']) {
+            $max_stock = $variante['stock'];
+        $_SESSION['mensaje_error'] = "No puedes agregar más de $max_stock unidades.";
+            header("Location: $base_url?page=cart");
+            exit;
+        }
+        $_SESSION['carrito'][$id_variante]['cantidad'] = $nueva;
+    } else {
+        $_SESSION['carrito'][$id_variante] = ['cantidad' => $cantidad];
+    }
+    $_SESSION['mensaje_exito'] = "Producto agregado al carrito.";
+    header("Location: $base_url?page=cart");
+    exit;
+}
+
+function procesarActualizarCarrito($conn): void {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
+    if (!isset($_POST['cantidades']) || !is_array($_POST['cantidades'])) return;
+    $hubo_error_stock = false;
+    foreach ($_POST['cantidades'] as $id_variante => $cantidad) {
+        $id_variante = (int) $id_variante;
+        $cantidad    = (int) $cantidad;
+        if ($cantidad <= 0) {
+            unset($_SESSION['carrito'][$id_variante]);
+            continue;
+        }
+        if (!isset($_SESSION['carrito'][$id_variante])) continue;
+        $stmt = $conn->prepare("SELECT stock FROM variantes_producto WHERE id_variante = ?");
+        $stmt->bind_param("i", $id_variante);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if (!$row) continue;
+        if ($cantidad > $row['stock']) {
+            $cantidad = $row['stock'];
+            $hubo_error_stock = true;
+        }
+        $_SESSION['carrito'][$id_variante]['cantidad'] = $cantidad;
+    }
+    $_SESSION[$hubo_error_stock ? 'mensaje_error' : 'mensaje_exito'] = $hubo_error_stock
+        ? "Stock insuficiente para algunos productos. Las cantidades se ajustaron al máximo disponible."
+        : "Carrito actualizado correctamente.";
+}
+
+function validarContacto(array $post): string {
+    $nombre  = strip_tags(trim($post['nombre']  ?? ''));
+    $email   = strip_tags(trim($post['email']   ?? ''));
+    $asunto  = strip_tags(trim($post['asunto']  ?? ''));
+    $mensaje = strip_tags(trim($post['mensaje'] ?? ''));
+    if (empty($nombre) || empty($email) || empty($asunto) || empty($mensaje))
+        return "Por favor, completa todos los campos.";
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL))
+        return "Formato de email no válido.";
+    if (!preg_match('/^[a-zA-Z\sñáéíóúÁÉÍÓÚ]+$/u', $nombre))
+        return "El nombre solo puede contener letras y espacios.";
+    if (!preg_match('/^[a-zA-Z0-9\sñáéíóúÁÉÍÓÚ.,\-_¿?¡!]+$/u', $asunto))
+        return "El asunto contiene caracteres no permitidos.";
+    if (strlen($mensaje) < 10)
+        return "El mensaje es demasiado corto.";
+    return '';
+}
+
 // 🧭 RUTEO PRINCIPAL
 switch ($page) {
 
@@ -169,52 +291,16 @@ switch ($page) {
             header("Location: $base_url?page=login");
             exit;
         }
-        $carrito_items = [];
-        $total_general = 0;
+        $carrito_items      = [];
+        $total_general      = 0;
         $descuento_aplicado = 0;
         $total_con_descuento = 0;
 
-        if (isset($_SESSION['carrito']) && !empty($_SESSION['carrito'])) {
-            $ids_variantes = array_keys($_SESSION['carrito']);
-            $modeloProducto = new Producto();
-            $detalles_productos = $modeloProducto->getProductosDelCarrito($conn, $ids_variantes);
-
-            foreach ($_SESSION['carrito'] as $id_variante => $item_sesion) {
-                if (isset($detalles_productos[$id_variante])) {
-                    $detalles_bd = $detalles_productos[$id_variante];
-                    $stock_disponible = (int) $detalles_bd['stock'];
-                    $cantidad = (int) $item_sesion['cantidad'];
-
-                    // Ajuste automático si el stock bajó mientras el producto estaba en el carrito
-                    if ($cantidad > $stock_disponible) {
-                        $cantidad = $stock_disponible;
-                        $_SESSION['carrito'][$id_variante]['cantidad'] = $cantidad;
-                    }
-
-                    $precio = $detalles_bd['precio'];
-                    $subtotal = $precio * $cantidad;
-                    $total_general += $subtotal;
-
-                    // Limpiamos posibles espacios o saltos de línea que vengan de la BD
-                    $img_principal = trim($detalles_bd['imagen_principal'] ?? '');
-                    $imagen_final = $img_principal ?: 'default.png';
-
-                    $carrito_items[] = [
-                        'id_variante' => $id_variante,
-                        'nombre' => $detalles_bd['nombre_producto'],
-                        'imagen_final' => $imagen_final,
-                        'talla' => $detalles_bd['talla'],
-                        'color' => $detalles_bd['color'],
-                        'cantidad' => $cantidad,
-                        'precio' => $precio,
-                        'subtotal' => $subtotal,
-                        'stock' => $stock_disponible
-                    ];
-                } else {
-                    unset($_SESSION['carrito'][$id_variante]);
-                }
-            }
-
+        if (!empty($_SESSION['carrito'])) {
+            $modeloProducto     = new Producto();
+            $detalles_productos = $modeloProducto->getProductosDelCarrito($conn, array_keys($_SESSION['carrito']));
+            $carrito_items      = procesarItemsCarrito($_SESSION['carrito'], $detalles_productos);
+            $total_general      = array_sum(array_column($carrito_items, 'subtotal'));
             if (isset($_SESSION['cupon'])) {
                 $descuento_aplicado = calcularDescuentoAplicado($total_general, (float) $_SESSION['cupon']['descuento']);
             }
@@ -229,62 +315,7 @@ switch ($page) {
             header("Location: $base_url?page=login");
             exit;
         }
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            if (
-                !isset($_POST['id_variante']) || !filter_var($_POST['id_variante'], FILTER_VALIDATE_INT) ||
-                !isset($_POST['cantidad']) || !filter_var($_POST['cantidad'], FILTER_VALIDATE_INT) ||
-                $_POST['cantidad'] <= 0
-            ) {
-                $_SESSION['mensaje_error'] = "Datos inválidos para agregar al carrito.";
-                header("Location: $base_url?page=products");
-                exit;
-            }
-
-            $id_variante = (int) $_POST['id_variante'];
-            $cantidad_solicitada = (int) $_POST['cantidad'];
-
-            $stmt = $conn->prepare("SELECT precio, stock, id_producto FROM variantes_producto WHERE id_variante = ?");
-            $stmt->bind_param("i", $id_variante);
-            $stmt->execute();
-            $resultado = $stmt->get_result();
-
-            if ($resultado->num_rows === 1) {
-                $variante = $resultado->fetch_assoc();
-                $stock_real = $variante['stock'];
-                $id_producto_padre = $variante['id_producto'];
-
-                if ($cantidad_solicitada > $stock_real) {
-                    $_SESSION['mensaje_error'] = "No hay suficiente stock.";
-                    header("Location: $base_url?page=producto&id=" . $id_producto_padre);
-                    exit;
-                }
-
-                if (isset($_SESSION['carrito'][$id_variante])) {
-                    $nueva_cantidad = $_SESSION['carrito'][$id_variante]['cantidad'] + $cantidad_solicitada;
-                    if ($nueva_cantidad > $stock_real) {
-                        $_SESSION['mensaje_error'] = "No puedes agregar más de $stock_real unidades.";
-                        header("Location: $base_url?page=cart");
-                        exit;
-                    } else {
-                        $_SESSION['carrito'][$id_variante]['cantidad'] = $nueva_cantidad;
-                    }
-                } else {
-                    $_SESSION['carrito'][$id_variante] = ['cantidad' => $cantidad_solicitada];
-                }
-
-                $_SESSION['mensaje_exito'] = "Producto agregado al carrito.";
-                header("Location: $base_url?page=cart");
-                exit;
-
-            } else {
-                $_SESSION['mensaje_error'] = "El producto no existe.";
-                header("Location: $base_url?page=products");
-                exit;
-            }
-        } else {
-            header("Location: $base_url?page=index");
-            exit;
-        }
+        procesarAgregarCarrito($conn, $base_url);
         break;
 
     case 'eliminar_carrito':
@@ -337,37 +368,7 @@ switch ($page) {
         break;
 
     case 'actualizar_carrito':
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            if (isset($_POST['cantidades']) && is_array($_POST['cantidades'])) {
-                $hubo_error_stock = false;
-                foreach ($_POST['cantidades'] as $id_variante => $cantidad) {
-                    $id_variante = (int) $id_variante;
-                    $cantidad = (int) $cantidad;
-
-                    if ($cantidad > 0 && isset($_SESSION['carrito'][$id_variante])) {
-                        $stmt = $conn->prepare("SELECT stock FROM variantes_producto WHERE id_variante = ?");
-                        $stmt->bind_param("i", $id_variante);
-                        $stmt->execute();
-                        $res = $stmt->get_result();
-                        if ($row = $res->fetch_assoc()) {
-                            if ($cantidad > $row['stock']) {
-                                $hubo_error_stock = true;
-                                $cantidad = $row['stock'];
-                            }
-                            $_SESSION['carrito'][$id_variante]['cantidad'] = $cantidad;
-                        }
-                        $stmt->close();
-                    } elseif ($cantidad <= 0 && isset($_SESSION['carrito'][$id_variante])) {
-                        unset($_SESSION['carrito'][$id_variante]);
-                    }
-                }
-                if ($hubo_error_stock) {
-                    $_SESSION['mensaje_error'] = "Stock insuficiente para algunos productos. Las cantidades se ajustaron al máximo disponible.";
-                } else {
-                    $_SESSION['mensaje_exito'] = "Carrito actualizado correctamente.";
-                }
-            }
-        }
+        procesarActualizarCarrito($conn);
         header("Location: $base_url?page=cart");
         exit;
         break;
@@ -698,35 +699,24 @@ switch ($page) {
 
     case 'contact':
     case '/contact.php':
-        // Lógica de contacto
         $mensaje_error = "";
         $mensaje_exito = "";
         $nombre = $email = $asunto = $mensaje = "";
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $nombre = strip_tags(trim($_POST['nombre']));
-            $email = strip_tags(trim($_POST['email']));
-            $asunto = strip_tags(trim($_POST['asunto']));
-            $mensaje = strip_tags(trim($_POST['mensaje']));
+            $nombre  = strip_tags(trim($_POST['nombre']  ?? ''));
+            $email   = strip_tags(trim($_POST['email']   ?? ''));
+            $asunto  = strip_tags(trim($_POST['asunto']  ?? ''));
+            $mensaje = strip_tags(trim($_POST['mensaje'] ?? ''));
 
-            if (empty($nombre) || empty($email) || empty($asunto) || empty($mensaje)) {
-                $mensaje_error = "Por favor, completa todos los campos.";
-            } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                $mensaje_error = "Formato de email no válido.";
-            } elseif (!preg_match('/^[a-zA-Z\sñáéíóúÁÉÍÓÚ]+$/u', $nombre)) {
-                $mensaje_error = "El nombre solo puede contener letras y espacios.";
-            } elseif (!preg_match('/^[a-zA-Z0-9\sñáéíóúÁÉÍÓÚ.,\-_¿?¡!]+$/u', $asunto)) {
-                $mensaje_error = "El asunto contiene caracteres no permitidos.";
-            } elseif (strlen($mensaje) < 10) {
-                $mensaje_error = "El mensaje es demasiado corto.";
+            $error = validarContacto($_POST);
+            if ($error) {
+                $mensaje_error = $error;
             } else {
-                $modeloMensaje = new Mensaje();
-                if ($modeloMensaje->guardarMensaje($conn, $nombre, $email, $asunto, $mensaje)) {
-                    $mensaje_exito = "¡Gracias por tu mensaje! Te responderemos pronto.";
-                    $nombre = $email = $asunto = $mensaje = "";
-                } else {
-                    $mensaje_error = "Error al enviar el mensaje. Intenta de nuevo.";
-                }
+                $ok = (new Mensaje())->guardarMensaje($conn, $nombre, $email, $asunto, $mensaje);
+                $mensaje_exito = $ok ? "¡Gracias por tu mensaje! Te responderemos pronto." : "";
+                $mensaje_error = $ok ? "" : "Error al enviar el mensaje. Intenta de nuevo.";
+                if ($ok) $nombre = $email = $asunto = $mensaje = "";
             }
         }
 
