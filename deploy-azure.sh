@@ -6,7 +6,7 @@ set -e
 
 # ─── CONFIGURACIÓN AZURE ──────────────────────────────────────────────────────
 RG="rg-tinkuy"
-LOCATION="eastus"
+LOCATION="brazilsouth"
 APP_PLAN="plan-tinkuy"
 APP_NAME="app-tinkuy"       # cambia si el nombre ya está tomado en Azure
 RUNTIME="PHP|8.2"
