@@ -34,6 +34,11 @@
 // public/index.php
 // Punto de entrada principal del sistema Ecommerce-Tinkuy
 
+// TEMP: error display for diagnosis — remove after identifying the 500
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
+
 // --- Hardening de sesión: debe ir ANTES de session_start() ---
 ini_set('session.use_strict_mode', '1');
 ini_set('session.use_only_cookies', '1');
