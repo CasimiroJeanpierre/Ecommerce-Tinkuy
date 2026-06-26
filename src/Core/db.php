@@ -11,11 +11,13 @@
  *   require_once BASE_PATH . '/src/Core/db.php';
  *   $resultado = $conn->query("SELECT ...");
  */
-$host = "127.0.0.1";
-$port = 3307; // Puerto XAMPP (diferente al 3306 predeterminado para evitar conflictos)
-$usuario = "root";
-$password = "ybzz-vr20-d17y";
-$database = "tinkuy_db";
+// En producción (Azure App Service) estas variables se configuran en
+// Application Settings. En local XAMPP siguen usando los valores por defecto.
+$host     = getenv('DB_HOST')     ?: '127.0.0.1';
+$port     = (int)(getenv('DB_PORT') ?: 3307);
+$usuario  = getenv('DB_USER')     ?: 'root';
+$password = getenv('DB_PASSWORD') ?: 'ybzz-vr20-d17y';
+$database = getenv('DB_NAME')     ?: 'tinkuy_db';
 
 // Crear conexión mysqli con puerto explícito como quinto parámetro
 $conn = new mysqli($host, $usuario, $password, $database, $port);
