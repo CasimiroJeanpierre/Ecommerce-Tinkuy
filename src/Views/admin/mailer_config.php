@@ -30,7 +30,7 @@ use PHPMailer\PHPMailer\Exception;
 require BASE_PATH . '/vendor/autoload.php';
 
 // Proveedor de envío: office365 | outlook | sendgrid | gmail | mailtrap_live | mailtrap_sandbox
-define('MAIL_PROVIDER', 'gmail');
+define('MAIL_PROVIDER', 'mailtrap_sandbox');
 
 // Comunes
 define('MAIL_FROM_NAME', 'Tinkuy E-commerce');
@@ -223,9 +223,9 @@ function send_mail($to, $subject, $body_html, $body_text = '')
 
         $mail->send();
         return true;
-    } catch (Exception $e) {
+    } catch (\Throwable $e) {
         // Fallback automático si falla autenticación y hay host alternativo
-        $error        = $mail->ErrorInfo ?? '';
+        $error        = $mail->ErrorInfo ?? $e->getMessage();
         $triedFallback = false;
         if (stripos($error, 'Could not authenticate') !== false && !empty($cfg['alt_host'])) {
             $triedFallback = true;

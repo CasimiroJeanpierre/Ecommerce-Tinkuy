@@ -425,6 +425,8 @@ class Security
             'remoteip' => self::obtenerIP()
         ]));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 8);
         $res = curl_exec($ch);
         curl_close($ch);
 

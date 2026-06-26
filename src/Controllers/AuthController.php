@@ -151,16 +151,18 @@ function iniciar2FA(array $usuario_data, string $email, string $base_url): void
     Security::rotarCSRF();
     session_regenerate_id(true);
 
+    $nombres = $apellidos = '';
     $perfil_stmt = $GLOBALS['conn']->prepare(
         "SELECT nombres, apellidos FROM perfiles WHERE id_usuario = ?"
     );
-    $perfil_stmt->bind_param("i", $usuario_data['id']);
-    $perfil_stmt->execute();
-    $perfil_stmt->store_result();
-    $nombres = $apellidos = '';
-    $perfil_stmt->bind_result($nombres, $apellidos);
-    $perfil_stmt->fetch();
-    $perfil_stmt->close();
+    if ($perfil_stmt) {
+        $perfil_stmt->bind_param("i", $usuario_data['id']);
+        $perfil_stmt->execute();
+        $perfil_stmt->store_result();
+        $perfil_stmt->bind_result($nombres, $apellidos);
+        $perfil_stmt->fetch();
+        $perfil_stmt->close();
+    }
 
     $_SESSION['pending_2fa'] = [
         'usuario_id'      => $usuario_data['id'],
@@ -185,7 +187,11 @@ function iniciar2FA(array $usuario_data, string $email, string $base_url): void
         <p style='color: #888; font-size: 12px;'>Este código expirará en 5 minutos. No lo compartas con nadie.</p>
     </div>";
 
-    send_mail($email, $asunto, $body_html);
+    try {
+        send_mail($email, $asunto, $body_html);
+    } catch (\Throwable $t) {
+        error_log("iniciar2FA: send_mail threw " . get_class($t) . ": " . $t->getMessage());
+    }
 
     header("Location: {$base_url}?page=verify_2fa");
     exit;
