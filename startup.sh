@@ -18,6 +18,7 @@ server {
     listen [::]:8080;
     root /home/site/wwwroot/public;
     index index.php index.html index.htm;
+    server_tokens off;
 
     error_page 500 502 503 504 /50x.html;
     location = /50x.html {
@@ -33,11 +34,20 @@ server {
         try_files $uri $uri/ /index.php?$query_string;
     }
 
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https:; font-src 'self' https://cdn.jsdelivr.net; frame-src https://www.google.com; connect-src 'self';" always;
+
     location ~ \.php$ {
         fastcgi_split_path_info ^(.+?\.php)(|/.*)$;
         fastcgi_pass 127.0.0.1:9000;
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_hide_header X-Powered-By;
     }
 }
 NGINX_EOF

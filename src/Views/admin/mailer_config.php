@@ -39,30 +39,30 @@ if (!defined('BASE_URL')) {
 }
 define('MAIL_DEBUG', 0); // 0 (off) | 2 (verbose)
 
-// Credenciales/variables por proveedor (rellenar según el elegido)
+// Credentials loaded from environment variables (set via Azure App Service > Application Settings).
 // Office 365 / Outlook corporativo
-define('O365_USERNAME', 'n00334763@upn.pe');
-define('O365_PASSWORD', 'TU_PASSWORD_O_APP_PASSWORD');
-// Outlook.com/Hotmail personal (si usas cuenta @outlook.com/@hotmail.com)
-define('OUTLOOK_USERNAME', 'tu_cuenta_outlook@outlook.com');
-define('OUTLOOK_PASSWORD', 'TU_PASSWORD_O_APP_PASSWORD');
+define('O365_USERNAME',  getenv('MAIL_O365_USERNAME')  ?: 'n00334763@upn.pe');
+define('O365_PASSWORD',  getenv('MAIL_O365_PASSWORD')  ?: '');
+// Outlook.com/Hotmail personal
+define('OUTLOOK_USERNAME', getenv('MAIL_OUTLOOK_USERNAME') ?: '');
+define('OUTLOOK_PASSWORD', getenv('MAIL_OUTLOOK_PASSWORD') ?: '');
 // SendGrid (recomendado en producción)
-define('SENDGRID_API_KEY', 'SG.xxxxxx');
-define('SENDGRID_FROM', 'notificaciones@tudominio.com');
+define('SENDGRID_API_KEY', getenv('MAIL_SENDGRID_API_KEY') ?: '');
+define('SENDGRID_FROM',    getenv('MAIL_SENDGRID_FROM')    ?: '');
 // Gmail (requiere App Password con 2FA)
-define('GMAIL_USERNAME', 'casimirom543@gmail.com'); // Coloca tu correo Gmail aquí
-define('GMAIL_APP_PASSWORD', 'cgbjlscfpfwntvjg'); // App Password sin espacios
+define('GMAIL_USERNAME',     getenv('MAIL_GMAIL_USERNAME')     ?: '');
+define('GMAIL_APP_PASSWORD', getenv('MAIL_GMAIL_APP_PASSWORD') ?: '');
 // Mailtrap Email Sending (no sandbox)
-define('MAILTRAP_LIVE_USERNAME', '');
-define('MAILTRAP_LIVE_PASSWORD', '');
-define('MAILTRAP_LIVE_FROM', 'notificaciones@tudominio.com');
+define('MAILTRAP_LIVE_USERNAME', getenv('MAIL_MAILTRAP_LIVE_USERNAME') ?: '');
+define('MAILTRAP_LIVE_PASSWORD', getenv('MAIL_MAILTRAP_LIVE_PASSWORD') ?: '');
+define('MAILTRAP_LIVE_FROM',     getenv('MAIL_MAILTRAP_LIVE_FROM')     ?: '');
 
 // Mailtrap Sandbox (para pruebas: los correos van al inbox de Mailtrap)
-define('MAILTRAP_SANDBOX_HOST', 'sandbox.smtp.mailtrap.io');
-define('MAILTRAP_SANDBOX_PORT', 2525);
-define('MAILTRAP_SANDBOX_USERNAME', '347476dcabe2f0');
-define('MAILTRAP_SANDBOX_PASSWORD', 'cbc95dd346b27c');
-define('MAILTRAP_SANDBOX_FROM', 'no-reply@tinkuy.com');
+define('MAILTRAP_SANDBOX_HOST',     getenv('MAIL_MAILTRAP_SANDBOX_HOST')     ?: 'sandbox.smtp.mailtrap.io');
+define('MAILTRAP_SANDBOX_PORT',     (int)(getenv('MAIL_MAILTRAP_SANDBOX_PORT') ?: 2525));
+define('MAILTRAP_SANDBOX_USERNAME', getenv('MAIL_MAILTRAP_SANDBOX_USERNAME') ?: '');
+define('MAILTRAP_SANDBOX_PASSWORD', getenv('MAIL_MAILTRAP_SANDBOX_PASSWORD') ?: '');
+define('MAILTRAP_SANDBOX_FROM',     getenv('MAIL_MAILTRAP_SANDBOX_FROM')     ?: 'no-reply@tinkuy.com');
 
 function get_smtp_config()
 {

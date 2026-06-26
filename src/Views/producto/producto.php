@@ -198,7 +198,7 @@ $pagina_actual = 'producto'; // Para el navbar
 
     <script>
         // Pasamos las variantes (definidas por el Controlador) a JavaScript
-        const variantes = <?php echo $variantes_json; ?>;
+        const variantes = <?php echo json_encode(json_decode($variantes_json), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE); ?>;
         const selectVariante = document.getElementById('select-variante');
         const precioElemento = document.getElementById('precio-producto');
         const stockElemento = document.getElementById('stock-producto');
