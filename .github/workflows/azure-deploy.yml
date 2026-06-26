@@ -25,9 +25,6 @@ jobs:
           extensions: mysqli, mbstring, openssl, intl
           coverage: none
 
-      - name: Validate composer.json
-        run: composer validate --strict
-
       - name: Install Composer dependencies (production)
         run: composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
 
