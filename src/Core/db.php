@@ -16,11 +16,17 @@
 $host     = getenv('DB_HOST')     ?: '127.0.0.1';
 $port     = (int)(getenv('DB_PORT') ?: 3307);
 $usuario  = getenv('DB_USER')     ?: 'root';
-$password = getenv('DB_PASSWORD') ?: 'ybzz-vr20-d17y';
+$password = getenv('DB_PASSWORD') ?: '';
 $database = getenv('DB_NAME')     ?: 'tinkuy_db';
 
-// Crear conexión mysqli con puerto explícito como quinto parámetro
-$conn = new mysqli($host, $usuario, $password, $database, $port);
+// Si se proporciona un certificado SSL (Azure MySQL con SSL habilitado), usarlo.
+$ssl_ca = getenv('MYSQL_SSL_CA') ?: '';
+
+$conn = new mysqli();
+if ($ssl_ca && file_exists($ssl_ca)) {
+    $conn->ssl_set(null, null, $ssl_ca, null, null);
+}
+$conn->real_connect($host, $usuario, $password, $database, $port);
 
 if ($conn->connect_error) {
     error_log("DB connection error: " . $conn->connect_error);
