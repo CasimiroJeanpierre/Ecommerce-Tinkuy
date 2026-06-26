@@ -1,0 +1,27 @@
+# Deshabilitar listado de directorios también en /public
+Options -Indexes
+
+# -----------------------------------------------------------------------
+# Desactivar display_errors (ZAP: Parameter Tampering - CWE-472)
+# -----------------------------------------------------------------------
+php_flag display_errors off
+php_value error_reporting 0
+
+# -----------------------------------------------------------------------
+# Eliminar cabeceras que revelan información del servidor (ZAP: Bajo - CWE-497)
+# -----------------------------------------------------------------------
+Header unset X-Powered-By
+Header always unset X-Powered-By
+Header always set Server "Apache"
+
+# -----------------------------------------------------------------------
+# Cabeceras de seguridad
+# -----------------------------------------------------------------------
+Header always set X-Content-Type-Options "nosniff"
+Header always set X-Frame-Options "SAMEORIGIN"
+Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+# Content Security Policy (ZAP: CSP no configurada - CWE-693)
+# 'unsafe-inline' requerido porque las vistas usan <style> y <script> en línea.
+# cdn.userway.org requerido por el widget de accesibilidad del footer.
+Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdn.userway.org www.gstatic.com www.google.com; style-src 'self' 'unsafe-inline' cdn.jsdelivr.net; img-src 'self' data: blob:; font-src 'self' cdn.jsdelivr.net data:; frame-ancestors 'self'; form-action 'self'; connect-src 'self'"

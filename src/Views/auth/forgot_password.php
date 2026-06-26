@@ -81,7 +81,13 @@ function guardarTokenYEnviarEmail(string $email, $conn): array
     return ['mensaje' => $mensaje, 'tipo' => $mail_ok ? 'success' : 'danger'];
 }
 
+$csrf_token = Security::generarCSRF();
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!isset($_POST['csrf_token']) || !Security::validarCSRF($_POST['csrf_token'])) {
+        $mensaje = "Token de seguridad inválido. Por favor, recarga la página e inténtalo de nuevo.";
+        $tipo_mensaje = 'danger';
+    } else {
     $email = strip_tags(trim($_POST['email']));
 
     // --- CORRECCIÓN: Añadir validación de campo vacío (ID 32) ---
@@ -111,6 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $stmt->close();
     }
+    } // end else csrf válido
 }
 ?>
 <!DOCTYPE html>
@@ -120,8 +127,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Recuperar Contraseña | Tinkuy</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" integrity="sha384-Ay26V7L8bsJTsX9Sxclnvsn+hkdiwRnrjZJXqKmkIDobPgIIWBOVguEcQQLDuhfN" crossorigin="anonymous">
 </head>
 
 <body class="bg-light d-flex align-items-center justify-content-center" style="min-height: 100vh;">
@@ -137,6 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <form method="POST">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
             <div class="mb-3">
                 <label for="email" class="form-label">Correo electrónico</label>
                 <div class="input-group">
@@ -155,7 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 al inicio de sesión</a>
         </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 </body>
 
 </html>

@@ -1,0 +1,34 @@
+# Deshabilitar listado de directorios (ZAP: Divulgación de error de aplicación - CWE-550)
+Options -Indexes
+
+# Ocultar versión del servidor en páginas de error de Apache (ZAP: Gran redirección - CWE-201)
+ServerSignature Off
+
+# -----------------------------------------------------------------------
+# Bloquear acceso a directorios de código fuente y dependencias
+# -----------------------------------------------------------------------
+RewriteEngine On
+
+RewriteRule ^(src|vendor|node_modules)(/.*)?$ - [F,L]
+
+# -----------------------------------------------------------------------
+# Bloquear archivos sensibles por extensión (ZAP: Revelación de IP - CWE-497)
+# -----------------------------------------------------------------------
+<FilesMatch "\.(sql|py|phar|env|ini|log)$">
+    Require all denied
+</FilesMatch>
+
+# Bloquear archivos de configuración y desarrollo por nombre
+<FilesMatch "^(composer\.(json|lock|phar)|package(-lock)?\.json|phpunit\.(xml|output\.txt)|tinkuy_db\.sql|analisis_cloc_output\.txt|phpunit_output\.txt)$">
+    Require all denied
+</FilesMatch>
+
+# Bloquear el archivo de resultados de SlowHTTPTest (ZAP: Comentarios sospechosos - CWE-615)
+<FilesMatch "^SlowHTTP">
+    Require all denied
+</FilesMatch>
+
+# Bloquear archivos de documentación interna en la raíz
+<FilesMatch "\.(docx|pptx)$">
+    Require all denied
+</FilesMatch>

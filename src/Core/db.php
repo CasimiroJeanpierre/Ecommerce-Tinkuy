@@ -23,6 +23,8 @@ $database = getenv('DB_NAME')     ?: 'tinkuy_db';
 $conn = new mysqli($host, $usuario, $password, $database, $port);
 
 if ($conn->connect_error) {
-    die("Error de conexión: " . $conn->connect_error);
+    error_log("DB connection error: " . $conn->connect_error);
+    http_response_code(500);
+    die("Error interno del servidor. Por favor, inténtalo de nuevo más tarde.");
 }
 ?>

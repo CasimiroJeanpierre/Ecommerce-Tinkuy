@@ -139,6 +139,11 @@ function procesarAgregarCarrito($conn, string $base_url): void {
         header("Location: $base_url?page=index");
         exit;
     }
+    if (!isset($_POST['csrf_token']) || !Security::validarCSRF($_POST['csrf_token'])) {
+        $_SESSION['mensaje_error'] = "Token de seguridad inválido. Por favor, recarga la página.";
+        header("Location: $base_url?page=products");
+        exit;
+    }
     $id_variante = filter_var($_POST['id_variante'] ?? '', FILTER_VALIDATE_INT);
     $cantidad    = filter_var($_POST['cantidad']    ?? '', FILTER_VALIDATE_INT);
     if (!$id_variante || !$cantidad || $cantidad <= 0) {
@@ -314,10 +319,12 @@ switch ($page) {
         $modeloProducto = new Producto();
         $modeloCategoria = new Categoria();
 
+        $ordenes_validos = ['nombre_asc', 'precio_asc', 'precio_desc'];
+        $orden_raw = $_GET['orden'] ?? 'nombre_asc';
         $filtros = [
             'categoria' => filter_input(INPUT_GET, 'categoria', FILTER_VALIDATE_INT) ?: null,
             'buscar' => trim(filter_input(INPUT_GET, 'buscar', FILTER_SANITIZE_SPECIAL_CHARS) ?? ''),
-            'orden' => $_GET['orden'] ?? 'nombre_asc'
+            'orden' => in_array($orden_raw, $ordenes_validos, true) ? $orden_raw : 'nombre_asc'
         ];
         if ($filtros['categoria'] === 0)
             $filtros['categoria'] = null;
@@ -866,6 +873,9 @@ switch ($page) {
         $nombre = $email = $asunto = $mensaje = "";
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            if (!isset($_POST['csrf_token']) || !Security::validarCSRF($_POST['csrf_token'])) {
+                $mensaje_error = "Token de seguridad inválido. Por favor, recarga la página e inténtalo de nuevo.";
+            } else {
             // Sanitizar campos con strip_tags para prevenir XSS; la validación de formato la hace validarContacto().
             $nombre  = strip_tags(trim($_POST['nombre']  ?? ''));
             $email   = strip_tags(trim($_POST['email']   ?? ''));
@@ -883,6 +893,7 @@ switch ($page) {
                 $mensaje_error = $ok ? "" : "Error al enviar el mensaje. Intenta de nuevo.";
                 if ($ok) $nombre = $email = $asunto = $mensaje = "";
             }
+            } // end else csrf válido
         }
 
         require BASE_PATH . '/src/Views/misc/contact.php';
@@ -922,7 +933,7 @@ switch ($page) {
     default:
         http_response_code(404);
         echo "<h1>Error 404: Página no encontrada</h1>";
-        echo "<p>Página solicitada: " . htmlspecialchars($page) . "</p>";
+        echo "<p>La página que buscas no existe. <a href='" . htmlspecialchars($base_url) . "?page=index'>Volver al inicio</a></p>";
         break;
 }
 
