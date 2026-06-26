@@ -30,7 +30,7 @@ use PHPMailer\PHPMailer\Exception;
 require BASE_PATH . '/vendor/autoload.php';
 
 // Proveedor de envío: office365 | outlook | sendgrid | gmail | mailtrap_live | mailtrap_sandbox
-define('MAIL_PROVIDER', 'mailtrap_sandbox');
+define('MAIL_PROVIDER', 'gmail');
 
 // Comunes
 define('MAIL_FROM_NAME', 'Tinkuy E-commerce');
@@ -51,7 +51,7 @@ define('SENDGRID_API_KEY', 'SG.xxxxxx');
 define('SENDGRID_FROM', 'notificaciones@tudominio.com');
 // Gmail (requiere App Password con 2FA)
 define('GMAIL_USERNAME', 'casimirom543@gmail.com'); // Coloca tu correo Gmail aquí
-define('GMAIL_APP_PASSWORD', 'cgbj lscf pfwn tvjg'); // Coloca la contraseña de aplicación aquí (16 letras sin espacios)
+define('GMAIL_APP_PASSWORD', 'cgbjlscfpfwntvjg'); // App Password sin espacios
 // Mailtrap Email Sending (no sandbox)
 define('MAILTRAP_LIVE_USERNAME', '');
 define('MAILTRAP_LIVE_PASSWORD', '');
