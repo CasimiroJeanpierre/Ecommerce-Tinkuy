@@ -11,13 +11,13 @@ APP_PLAN="plan-tinkuy"
 APP_NAME="app-tinkuy"       # cambia si el nombre ya está tomado en Azure
 RUNTIME="PHP|8.2"
 
-# ─── CREDENCIALES MYSQL EXTERNO ───────────────────────────────────────────────
-# Rellena con los datos de tu servicio MySQL (TiDB / PlanetScale / otro)
-DB_HOST="<host-de-tu-mysql>"       # ej: gateway01.us-east-1.prod.aws.tidbcloud.com
-DB_PORT="4000"                      # TiDB usa 4000; MySQL estándar usa 3306
-DB_USER="<usuario>"
-DB_PASSWORD="<contraseña>"
+# ─── CREDENCIALES TIDB SERVERLESS ────────────────────────────────────────────
+DB_HOST="gateway01.us-east-1.prod.aws.tidbcloud.com"
+DB_PORT="4000"
+DB_USER="4WbyRESZ4VyDF1p.root"
+DB_PASSWORD="cfSHyEbPO0PHzlck"
 DB_NAME="tinkuy_db"
+MYSQL_SSL_CA="/etc/ssl/certs/ca-certificates.crt"
 
 # ─── VARIABLES DE CORREO SMTP ─────────────────────────────────────────────────
 MAIL_HOST="smtp.tuproveedor.com"
@@ -34,13 +34,6 @@ echo "  DESPLIEGUE TINKUY EN AZURE"
 echo "  (MySQL externo)"
 echo "══════════════════════════════════════════"
 echo ""
-
-# Validar que se rellenaron las credenciales
-if [[ "$DB_HOST" == "<host-de-tu-mysql>" ]]; then
-  echo "❌ ERROR: Edita el script y rellena DB_HOST, DB_USER y DB_PASSWORD"
-  echo "   con los datos de tu MySQL externo (TiDB / PlanetScale)."
-  exit 1
-fi
 
 # 1. Resource Group
 echo "► [1/4] Creando Resource Group '$RG' en $LOCATION ..."
@@ -89,6 +82,7 @@ az webapp config appsettings set \
     DB_USER="${DB_USER}" \
     DB_PASSWORD="${DB_PASSWORD}" \
     DB_NAME="${DB_NAME}" \
+    MYSQL_SSL_CA="${MYSQL_SSL_CA}" \
     MAIL_HOST="${MAIL_HOST}" \
     MAIL_PORT="${MAIL_PORT}" \
     MAIL_USER="${MAIL_USER}" \
