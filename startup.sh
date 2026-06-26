@@ -1,34 +1,27 @@
 #!/bin/bash
-# No set -e — exec apache2-foreground MUST always be reached
 
 LOG="/home/site/startup.log"
 echo "=== startup.sh: $(date) ===" >> "$LOG" 2>/dev/null
 echo "User: $(whoami)" >> "$LOG" 2>/dev/null
 
-VHOST='<VirtualHost *:80>
-    DocumentRoot /home/site/wwwroot/public
-    <Directory /home/site/wwwroot/public>
-        Options -Indexes +FollowSymLinks
-        AllowOverride All
-        Require all granted
-    </Directory>
-    ErrorLog ${APACHE_LOG_DIR}/error.log
-    CustomLog ${APACHE_LOG_DIR}/access.log combined
-</VirtualHost>'
+NGINX_CONF="/etc/nginx/sites-enabled/default"
 
-for CONF in \
-    "/etc/apache2/sites-available/000-default.conf" \
-    "/etc/apache2/sites-enabled/000-default.conf"; do
-    echo "$VHOST" > "$CONF" 2>/dev/null \
-        && echo "Updated: $CONF" >> "$LOG" 2>/dev/null \
-        || echo "Failed:  $CONF" >> "$LOG" 2>/dev/null
-done
+if [ -f "$NGINX_CONF" ]; then
+    # Change DocumentRoot to public/
+    sed -i 's|root /home/site/wwwroot;|root /home/site/wwwroot/public;|g' "$NGINX_CONF"
 
-sed -i 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf 2>/dev/null || true
+    # Add try_files for PHP routing (needed since .htaccess doesn't work in nginx)
+    if ! grep -q "try_files" "$NGINX_CONF"; then
+        sed -i '/location \/ {/a\        try_files $uri $uri/ /index.php?$query_string;' "$NGINX_CONF"
+    fi
 
-a2ensite 000-default 2>/dev/null || true
-a2enmod rewrite   2>/dev/null || true
-a2enmod headers   2>/dev/null || true
+    echo "Updated nginx config:" >> "$LOG" 2>/dev/null
+    grep -E "root|try_files" "$NGINX_CONF" >> "$LOG" 2>/dev/null
 
-echo "=== Launching apache2-foreground ===" >> "$LOG" 2>/dev/null
-exec apache2-foreground
+    # Reload nginx if already running
+    nginx -s reload >> "$LOG" 2>/dev/null \
+        && echo "nginx reloaded OK" >> "$LOG" 2>/dev/null \
+        || echo "nginx not running yet (will start with updated config)" >> "$LOG" 2>/dev/null
+else
+    echo "ERROR: $NGINX_CONF not found" >> "$LOG" 2>/dev/null
+fi
