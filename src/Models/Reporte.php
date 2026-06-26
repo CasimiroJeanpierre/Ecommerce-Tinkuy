@@ -1,9 +1,21 @@
 <?php
 
 /**
- * Modelo Reporte
- * Queries para generación de reportes administrativos
- * Tipos: Ventas, Productos, Vendedores
+ * Modelo de reportes administrativos.
+ * Encapsula las consultas SQL de análisis para los tres tipos de reportes
+ * disponibles en el panel de administración.
+ *
+ * Métodos disponibles:
+ *   generarReporteVentas($fecha_inicio, $fecha_fin)    — Pedidos y totales en el rango de fechas
+ *   generarReporteProductos($fecha_inicio, $fecha_fin) — Productos más vendidos con ingresos
+ *   generarReporteVendedores($fecha_inicio, $fecha_fin) — Rendimiento por vendedor
+ *
+ * Los reportes filtran por fecha_pedido en la tabla 'pedidos' y solo incluyen
+ * pedidos con estado diferente a 'Cancelado' para reflejar ingresos reales.
+ *
+ * Uso desde ReportesController::generar():
+ *   $reporte = new Reporte($conn);
+ *   $datos = $reporte->generarReporteVentas('2026-01-01', '2026-06-30');
  */
 class Reporte {
     private $conn;
@@ -13,8 +25,13 @@ class Reporte {
     }
     
     /**
-     * REPORTE DE VENTAS
-     * Resumen de ventas por período con detalles de pedidos
+     * Genera el reporte de ventas para un período dado.
+     * Incluye cabecera de pedido, cliente, método de pago y estado derivado
+     * de los ítems de detalle_pedido dentro del rango de fechas.
+     *
+     * @param string $fecha_inicio Fecha de inicio en formato YYYY-MM-DD
+     * @param string $fecha_fin    Fecha de fin en formato YYYY-MM-DD
+     * @return array{datos: array<int, array<string, mixed>>, estadisticas: array<string, mixed>}
      */
     public function generarReporteVentas($fecha_inicio, $fecha_fin) {
         $query = "
@@ -78,8 +95,19 @@ class Reporte {
     }
     
     /**
-     * REPORTE DE PRODUCTOS
-     * Análisis de productos: stock, ventas, rendimiento
+     * Genera el reporte de productos con métricas de stock, ventas e ingresos para el período dado.
+     * Usa LEFT JOIN a detalle_pedido y pedidos con filtro de fecha para contar solo ventas del período,
+     * sin excluir productos con 0 ventas (LEFT JOIN vs INNER JOIN).
+     * La clasificación de stock se calcula en SQL con CASE: Sin Stock (0), Bajo (<10), Normal (<50), Alto (≥50).
+     * Los ingresos_generados excluyen devoluciones (no hay filtro de estado de pedido actualmente).
+     *
+     * Llama a calcularEstadisticasProductos() para agregar totales y top-5.
+     *
+     * @param string $fecha_inicio Fecha de inicio en formato YYYY-MM-DD (inclusive)
+     * @param string $fecha_fin    Fecha de fin en formato YYYY-MM-DD (inclusive)
+     * @return array{datos: array<int, array<string, mixed>>, estadisticas: array<string, mixed>}
+     *         estadisticas incluye: total_productos, stock_total, unidades_vendidas, ingresos_totales,
+     *         por_estado_stock (array), top_5_productos (array)
      */
     public function generarReporteProductos($fecha_inicio, $fecha_fin) {
         $query = "
@@ -135,8 +163,20 @@ class Reporte {
     }
     
     /**
-     * REPORTE DE VENDEDORES
-     * Ranking y desempeño de vendedores
+     * Genera el reporte de rendimiento de vendedores para el período indicado.
+     * Incluye todos los usuarios con id_rol = 2 (vendedores), tengan ventas o no en el período.
+     * La tasa_entrega_pct = (ítems con estado 4 / total ítems en el período) × 100.
+     * productos_activos y productos_inactivos se cuentan sin filtro de fecha.
+     * ingresos_totales y unidades_vendidas se filtran por fecha_pedido del período.
+     * El resultado se ordena: mayor ingreso total primero, luego mayor cantidad vendida.
+     *
+     * Llama a calcularEstadisticasVendedores() para agregar totales globales del ranking.
+     *
+     * @param string $fecha_inicio Fecha de inicio en formato YYYY-MM-DD (inclusive)
+     * @param string $fecha_fin    Fecha de fin en formato YYYY-MM-DD (inclusive)
+     * @return array{datos: array<int, array<string, mixed>>, estadisticas: array<string, mixed>}
+     *         estadisticas incluye: total_vendedores, total_ingresos, promedio_ingresos,
+     *         top_vendedor (array), promedio_tasa_entrega (float)
      */
     public function generarReporteVendedores($fecha_inicio, $fecha_fin) {
         $query = "
@@ -199,7 +239,17 @@ class Reporte {
     }
     
     /**
-     * Calcular estadísticas agregadas de ventas
+     * Calcula métricas consolidadas de ventas a partir del array de datos ya obtenido
+     * de generarReporteVentas(): total de pedidos, ingresos totales, unidades vendidas,
+     * ticket promedio y distribuciones de conteo por método de pago y estado de pedido.
+     * El ticket_promedio se calcula como total_ingresos / total_pedidos; si total_pedidos
+     * es 0 (sin datos en el período) devuelve 0 para evitar división por cero.
+     * Las distribuciones metodos_pago y estados son arrays asociativos [valor => conteo].
+     * Los valores null en metodo_pago se normalizan a la cadena 'No especificado'.
+     *
+     * @param array<int, array<string, mixed>> $datos Filas del reporte de ventas (generarReporteVentas)
+     * @return array{total_pedidos: int, total_ingresos: float, total_unidades: int,
+     *               ticket_promedio: float, metodos_pago: array<string, int>, estados: array<string, int>}
      */
     private function calcularEstadisticasVentas($datos) {
         $total_pedidos = count($datos);
@@ -238,7 +288,18 @@ class Reporte {
     }
     
     /**
-     * Calcular estadísticas agregadas de productos
+     * Calcula métricas consolidadas de productos a partir del array de datos ya obtenido
+     * de generarReporteProductos(): total de productos, stock total, unidades vendidas,
+     * ingresos totales y distribución de conteo por estado de stock (Sin Stock / Bajo / Normal / Alto).
+     * Los ingresos se redondean a 2 decimales para presentación en el panel de reportes.
+     * La distribución por_estado_stock usa las 4 claves fijas del CASE SQL de generarReporteProductos;
+     * las claves siempre están presentes (con valor 0 si no hay productos en ese estado).
+     * top_5_productos son las primeras 5 filas del resultado original, que ya viene ordenado
+     * por unidades_vendidas DESC desde la consulta SQL.
+     *
+     * @param array<int, array<string, mixed>> $datos Filas del reporte de productos (generarReporteProductos)
+     * @return array{total_productos: int, stock_total: int, unidades_vendidas: int,
+     *               ingresos_totales: float, por_estado_stock: array<string, int>, top_5_productos: array}
      */
     private function calcularEstadisticasProductos($datos) {
         $total_productos = count($datos);
@@ -275,7 +336,11 @@ class Reporte {
     }
     
     /**
-     * Calcular estadísticas agregadas de vendedores
+     * Calcula totales de ingresos, vendedores activos y top 3 por ingresos
+     * a partir del array ya obtenido de generarReporteVendedores.
+     *
+     * @param array<int, array<string, mixed>> $datos Filas de reporte de vendedores
+     * @return array{total_vendedores: int, vendedores_activos: int, ingresos_totales: float, ingreso_promedio_vendedor: float, productos_totales: int, top_3_vendedores: array}
      */
     private function calcularEstadisticasVendedores($datos) {
         $total_vendedores = count($datos);

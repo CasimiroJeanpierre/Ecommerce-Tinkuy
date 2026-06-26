@@ -1,12 +1,37 @@
 <?php
 
+/**
+ * Controlador de envíos para el panel del vendedor.
+ * Gestiona la consulta de ítems pendientes de envío y el registro
+ * del número de seguimiento y empresa de envío en detalle_pedido.
+ *
+ * Métodos disponibles:
+ *   listarEnviosPendientes($id_vendedor) — Devuelve ítems con estado 2 (pendiente de envío)
+ *   listarEmpresasEnvio()               — Lista las empresas de logística disponibles
+ *   registrarEnvio($id_detalle, ...)    — Actualiza estado a 'Enviado' y guarda seguimiento
+ *
+ * Uso desde el router (public/index.php):
+ *   $ctrl = new EnviosController($conn);
+ *   $pendientes = $ctrl->listarEnviosPendientes($_SESSION['usuario_id']);
+ *
+ * Nota: No verifica la sesión internamente — el router debe garantizar que solo
+ * vendedores autenticados accedan a las rutas 'vendedor_envios'.
+ */
 class EnviosController {
     private $conn;
-    
+
     public function __construct($conn) {
         $this->conn = $conn;
     }
 
+    /**
+     * Devuelve los ítems de pedido con estado 2 (pendiente de envío)
+     * que pertenecen a productos del vendedor indicado, incluyendo
+     * dirección del comprador y datos de la variante.
+     *
+     * @param int $id_vendedor ID del vendedor autenticado
+     * @return array<int, array<string, mixed>> Filas con detalle de pedido, producto y dirección
+     */
     public function listarEnviosPendientes($id_vendedor) {
         $query = "
             SELECT 
@@ -50,11 +75,26 @@ class EnviosController {
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
+    /**
+     * Devuelve todas las empresas de envío disponibles ordenadas por nombre.
+     *
+     * @return array<int, array<string, mixed>> Filas de la tabla empresas_envio
+     */
     public function listarEmpresasEnvio() {
         $resultado = $this->conn->query("SELECT * FROM empresas_envio ORDER BY nombre_empresa ASC");
         return $resultado->fetch_all(MYSQLI_ASSOC);
     }
 
+    /**
+     * Registra la empresa de envío y número de seguimiento en un ítem de pedido,
+     * cambiando su estado a 3 (Enviado). Verifica que el ítem pertenezca al vendedor.
+     *
+     * @param int    $id_detalle         ID de la fila en detalle_pedido
+     * @param int    $id_empresa_envio   ID de la empresa de envío seleccionada
+     * @param string $numero_seguimiento Código de seguimiento asignado por la empresa
+     * @param int    $id_vendedor        ID del vendedor autenticado (para verificar propiedad)
+     * @return array{success: bool, message: string} Resultado de la operación
+     */
     public function registrarEnvio($id_detalle, $id_empresa_envio, $numero_seguimiento, $id_vendedor) {
         try {
             // Validar datos

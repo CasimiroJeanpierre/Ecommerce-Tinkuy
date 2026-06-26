@@ -1,3 +1,26 @@
+<?php
+/**
+ * Vista de gestión de usuarios del panel de administración.
+ * Muestra la lista completa de usuarios del sistema ordenados por rol y fecha de registro.
+ * Permite al admin desactivar clientes (baja lógica), desactivar/reactivar vendedores
+ * y acceder al formulario de creación de nuevos usuarios.
+ *
+ * Variables esperadas (provistas por AdminUsuariosController::listarUsuarios()):
+ *   $usuarios          (array)  - Lista de usuarios: id_usuario, usuario, email, fecha_registro,
+ *                                  id_rol, nombre_rol, nombres, apellidos, estado
+ *   $nombre_admin      (string) - Nombre de usuario del administrador autenticado
+ *   $mensaje_error     (string) - Error de la última operación (GET eliminar/desactivar/reactivar)
+ *   $mensaje_exito     (string) - Confirmación de la última operación exitosa
+ *   $id_usuario_actual (int)    - ID del admin autenticado (para ocultar botón de auto-desactivación)
+ *
+ * Acciones disponibles mediante GET:
+ *   ?eliminar_id=N    → Desactiva un cliente (baja lógica)
+ *   ?desactivar_id=N  → Desactiva un vendedor y oculta sus productos
+ *   ?reactivar_id=N   → Reactiva cualquier usuario y sus productos
+ *
+ * Seguridad: Los botones de acción se ocultan para el usuario actual (no puede auto-desactivarse).
+ */
+?>
 <!DOCTYPE html>
 <html lang="es">
 

@@ -1,4 +1,19 @@
 <?php
+/**
+ * Componente de tarjetas KPI (Key Performance Indicators) del dashboard del vendedor.
+ * Renderiza 4 tarjetas Bootstrap en una fila responsive mostrando:
+ *   - Envíos Pendientes → enlace a ?page=vendedor_envios
+ *   - Productos Activos → enlace a ?page=vendedor_productos
+ *   - Total Stock       → solo informativo
+ *   - Artículos Vendidos → enlace a ?page=vendedor_ventas
+ *
+ * Variables esperadas desde el scope del dashboard (src/Views/vendedor/dashboard.php):
+ *   $envios_pendientes (int)    - Ítems de pedido con estado 'Procesando' (pendientes de envío)
+ *   $total_productos   (int)    - Productos del vendedor con estado 'activo'
+ *   $total_stock       (int)    - Suma de unidades en stock de variantes activas
+ *   $total_ventas      (int)    - Ítems vendidos con estado 'Enviado' o 'Entregado'
+ *   $base_url          (string) - URL base del proyecto para los enlaces de las tarjetas
+ */
 // Vista parcial para las tarjetas KPI del dashboard vendedor
 ?>
 <div class="row g-4 mb-4">

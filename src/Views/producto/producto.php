@@ -1,4 +1,18 @@
 <?php
+/**
+ * Vista de detalle de un producto individual.
+ * Muestra la galería de imágenes, descripción, selector de variante (talla/color),
+ * precio actualizado por variante vía JS y botón de añadir al carrito.
+ * Si el producto no existe o no está activo, muestra un mensaje de error.
+ *
+ * Variables esperadas (preparadas por public/index.php case 'producto'):
+ *   $producto    (array|null) - Datos del producto:
+ *                                id_producto, nombre_producto, descripcion, imagen_principal,
+ *                                imagenes_adicionales (array de rutas), nombre_categoria, estado
+ *   $variantes   (array)      - Variantes activas: id_variante, talla, color, precio, stock
+ *                                (vacío si producto inactivo o sin variantes con stock)
+ *   $base_url    (string)     - URL base del proyecto
+ */
 // src/Views/producto.php
 // Esta Vista espera que todas las variables ($producto, $variantes, etc.)
 // ya existan (definidas por el Controlador public/index.php).

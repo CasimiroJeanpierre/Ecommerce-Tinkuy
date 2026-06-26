@@ -1,3 +1,23 @@
+<?php
+/**
+ * Vista de gestión de pedidos del panel de administración.
+ * Muestra el listado completo de pedidos del sistema con opción de filtrar por estado.
+ * Permite al admin ver el detalle de cualquier pedido sin restricción de propietario.
+ *
+ * Variables esperadas (provistas por AdminController::pedidos()):
+ *   $pedidos        (array)  - Lista de pedidos ordenados por fecha DESC:
+ *                               id_pedido, fecha_pedido, total_pedido, nombre_estado,
+ *                               email (comprador), nombres, apellidos
+ *   $estados_pedido (array)  - Lista de todos los estados disponibles (id_estado, nombre_estado)
+ *                               para poblar el selector de filtro
+ *   $filtro_estado  (int|null) - ID del estado activo como filtro; null = todos
+ *   $nombre_admin   (string) - Nombre del administrador autenticado (desde $_SESSION)
+ *   $base_url       (string) - URL base del proyecto para construir los enlaces a detalles
+ *
+ * Filtros disponibles (GET):
+ *   ?page=admin_pedidos&filtro_estado=N → Filtra pedidos por estado N
+ */
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>

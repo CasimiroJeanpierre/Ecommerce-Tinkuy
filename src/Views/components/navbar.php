@@ -1,4 +1,18 @@
 <?php
+/**
+ * Componente de barra de navegación pública de la tienda Tinkuy.
+ * Renderiza la barra superior responsive con:
+ *   - Logo y nombre de la tienda (enlace al inicio)
+ *   - Enlace al catálogo de productos
+ *   - Icono del carrito con contador dinámico (desde $_SESSION['carrito'])
+ *   - Dropdown de usuario: login/registro si no autenticado, o perfil+panel si lo está
+ *   - El panel al que lleva el dropdown varía según rol: cliente → mi_perfil,
+ *     vendedor → vendedor_dashboard, admin → admin_dashboard
+ *
+ * Variables disponibles desde el scope de inclusión:
+ *   $base_url    (string) - URL base del proyecto para construir los href de navegación
+ *   $pagina_actual (string) - Identificador de la página activa (para resaltar el enlace)
+ */
 // src/Views/components/navbar.php
 
 // --- RUTAS BASE (Portables) ---

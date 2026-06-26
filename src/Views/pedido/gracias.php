@@ -1,4 +1,15 @@
 <?php
+/**
+ * Vista de confirmación de pedido exitoso (página de gracias/thank-you).
+ * Se muestra solo si $_SESSION['pedido_exitoso_id'] existe; en caso contrario
+ * redirige al index para evitar acceso directo a esta URL.
+ * Limpia la sesión del pedido después de mostrarlo (one-time display).
+ *
+ * Variables esperadas (definidas desde la sesión por PaymentController):
+ *   $id_pedido      (int)    - ID del pedido recién creado (desde $_SESSION['pedido_exitoso_id'])
+ *   $total_pedido   (float)  - Total del pedido confirmado (desde $_SESSION['pedido_exitoso_total'])
+ *   $base_url       (string) - URL base del proyecto
+ */
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }

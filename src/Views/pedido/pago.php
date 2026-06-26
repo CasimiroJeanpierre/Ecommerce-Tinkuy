@@ -1,6 +1,63 @@
 <?php
+/**
+ * Vista del proceso de pago (checkout).
+ * Muestra el resumen de los ítems del carrito, el selector de dirección de envío,
+ * el formulario de datos de tarjeta (simulado) y el campo de código de cupón.
+ * El POST de confirmación crea el pedido y vacía el carrito si el pago es exitoso.
+ *
+ * Variables definidas por PaymentController antes de renderizar:
+ *   $carrito_items  (array)  - Ítems del carrito: id_variante, nombre, imagen, talla,
+ *                               color, cantidad, precio, subtotal
+ *   $total_general  (float)  - Suma total del pedido antes de descuento
+ *   $descuento      (float)  - Importe descontado por cupón (0 si no hay cupón)
+ *   $total_final    (float)  - Total con descuento aplicado
+ *   $direcciones    (array)  - Direcciones de envío guardadas del usuario autenticado
+ *   $csrf_token     (string) - Token CSRF para el formulario POST de confirmación
+ *   $base_url       (string) - URL base del proyecto
+ *   $mensaje_error  (string) - Error de validación, cupón inválido o fallo en BD
+ */
 require_once BASE_PATH . '/src/Core/db.php';
 require_once BASE_PATH . '/src/Controllers/PaymentController.php';
+
+/**
+ * Valida que cada ítem del carrito tenga precio y stock suficiente,
+ * y devuelve el total calculado en el servidor.
+ *
+ * @throws Exception Si algún producto no está disponible o sin stock
+ */
+function validarStockYCalcularTotal(array $carrito, array $precios_reales, array $stock_actual): float
+{
+    $total = 0.0;
+    foreach ($carrito as $id_variante => $item) {
+        if (!isset($precios_reales[$id_variante])) {
+            throw new Exception("El producto ID $id_variante ya no está disponible.");
+        }
+        if ($stock_actual[$id_variante] < $item['cantidad']) {
+            throw new Exception("Stock insuficiente para el producto ID $id_variante.");
+        }
+        $total += $precios_reales[$id_variante] * $item['cantidad'];
+    }
+    return $total;
+}
+
+/**
+ * Inserta el detalle de un ítem del pedido y descuenta su stock.
+ * Lanza Exception si no hubo suficiente stock al momento del UPDATE.
+ *
+ * @throws Exception
+ */
+function insertarItemPedido(int $id_pedido, int $id_variante, int $cantidad, float $precio, \mysqli_stmt $stmt_detalle, \mysqli_stmt $stmt_stock): void
+{
+    $stmt_detalle->bind_param("iiid", $id_pedido, $id_variante, $cantidad, $precio);
+    $stmt_detalle->execute();
+
+    $stmt_stock->bind_param("iii", $cantidad, $id_variante, $cantidad);
+    $stmt_stock->execute();
+
+    if ($stmt_stock->affected_rows === 0) {
+        throw new Exception("Error al actualizar el stock del producto ID $id_variante.");
+    }
+}
 
 // Control de acceso (Seguridad)
 $base_url = defined('BASE_URL') ? BASE_URL : '/Ecommerce-Tinkuy/public/index.php';
@@ -47,130 +104,104 @@ try {
 
 // Procesar el pago si es un POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Validación de CSRF
-    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-        $mensaje_error = "Error de seguridad: token inválido.";
-    }
-    // Validar dirección seleccionada
-    elseif (empty($_POST['id_direccion']) || !filter_var($_POST['id_direccion'], FILTER_VALIDATE_INT)) {
-        $mensaje_error = "Por favor, selecciona una dirección de envío válida.";
-    } else {
+    $conn->begin_transaction();
+    try {
+        // Validación de CSRF
+        if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+            throw new Exception("Error de seguridad: token inválido.");
+        }
+        // Validar dirección seleccionada
+        if (empty($_POST['id_direccion']) || !filter_var($_POST['id_direccion'], FILTER_VALIDATE_INT)) {
+            throw new Exception("Por favor, selecciona una dirección de envío válida.");
+        }
         $id_direccion_seleccionada = (int) $_POST['id_direccion'];
 
-        // Iniciar transacción
-        $conn->begin_transaction();
-
-        try {
-            // Validar que la dirección pertenezca al usuario
-            $stmt_validar = $conn->prepare("SELECT id_direccion FROM direcciones WHERE id_direccion = ? AND id_usuario = ?");
-            $stmt_validar->bind_param("ii", $id_direccion_seleccionada, $id_usuario);
-            $stmt_validar->execute();
-            $resultado_validar = $stmt_validar->get_result();
-
-            if ($resultado_validar->num_rows === 0) {
-                throw new Exception("Dirección de envío inválida.");
-            }
-
-            // Recalcular el total en el servidor (seguridad)
-            $ids_variantes = array_keys($_SESSION['carrito']);
-            $placeholders = implode(',', array_fill(0, count($ids_variantes), '?'));
-            $tipos = str_repeat('i', count($ids_variantes));
-
-            $stmt_precios = $conn->prepare("
-                SELECT v.id_variante, v.precio, v.stock 
-                FROM variantes_producto AS v 
-                WHERE v.id_variante IN ($placeholders)
-            ");
-            $stmt_precios->bind_param($tipos, ...$ids_variantes);
-            $stmt_precios->execute();
-            $resultado_precios = $stmt_precios->get_result();
-
-            $precios_reales = [];
-            $stock_actual = [];
-            while ($fila = $resultado_precios->fetch_assoc()) {
-                $precios_reales[$fila['id_variante']] = (float) $fila['precio'];
-                $stock_actual[$fila['id_variante']] = (int) $fila['stock'];
-            }
-
-            $total_seguro = 0;
-            foreach ($_SESSION['carrito'] as $id_variante => $item) {
-                if (!isset($precios_reales[$id_variante])) {
-                    throw new Exception("El producto ID $id_variante ya no está disponible.");
-                }
-                if ($stock_actual[$id_variante] < $item['cantidad']) {
-                    throw new Exception("Stock insuficiente para el producto ID $id_variante.");
-                }
-                $total_seguro += $precios_reales[$id_variante] * $item['cantidad'];
-            }
-
-            // Aplicar descuento al total seguro antes de guardar
-            if (isset($_SESSION['cupon'])) {
-                $descuento_seguro = calcularDescuentoAplicado($total_seguro, (float) $_SESSION['cupon']['descuento']);
-                $total_seguro = calcularTotalFinal($total_seguro, $descuento_seguro);
-            }
-
-            // Crear el Pedido
-            $stmt_pedido = $conn->prepare("
-                INSERT INTO pedidos (id_usuario, id_direccion_envio, id_estado_pedido, total_pedido, fecha_pedido) 
-                VALUES (?, ?, 2, ?, NOW())
-            ");
-            $stmt_pedido->bind_param("iid", $id_usuario, $id_direccion_seleccionada, $total_seguro);
-            $stmt_pedido->execute();
-            $nuevo_pedido_id = $conn->insert_id;
-
-            // Guardar los Detalles del Pedido y actualizar stock
-            $stmt_detalle = $conn->prepare("
-                INSERT INTO detalle_pedido (id_pedido, id_variante, cantidad, precio_historico) 
-                VALUES (?, ?, ?, ?)
-            ");
-
-            $stmt_stock = $conn->prepare("
-                UPDATE variantes_producto 
-                SET stock = stock - ? 
-                WHERE id_variante = ? AND stock >= ?
-            ");
-
-            foreach ($_SESSION['carrito'] as $id_variante => $item) {
-                $cantidad = $item['cantidad'];
-                $precio_historico = $precios_reales[$id_variante];
-
-                // Insertar detalle
-                $stmt_detalle->bind_param("iiid", $nuevo_pedido_id, $id_variante, $cantidad, $precio_historico);
-                $stmt_detalle->execute();
-
-                // Actualizar stock con verificación de concurrencia
-                $stmt_stock->bind_param("iii", $cantidad, $id_variante, $cantidad);
-                $stmt_stock->execute();
-
-                if ($stmt_stock->affected_rows === 0) {
-                    throw new Exception("Error al actualizar el stock del producto ID $id_variante.");
-                }
-            }
-
-            // Registrar la Transacción
-            $stmt_transaccion = $conn->prepare("
-                INSERT INTO transacciones (id_pedido, metodo_pago, monto, estado_pago, id_externo_gateway, fecha_transaccion) 
-                VALUES (?, 'Tarjeta (Simulada)', ?, 'exitoso', ?, NOW())
-            ");
-            $id_gateway_simulado = "txn_" . bin2hex(random_bytes(16));
-            $stmt_transaccion->bind_param("ids", $nuevo_pedido_id, $total_seguro, $id_gateway_simulado);
-            $stmt_transaccion->execute();
-
-            // Confirmar transacción
-            $conn->commit();
-
-            // Limpiar carrito y redirigir
-            $_SESSION['carrito'] = [];
-            unset($_SESSION['cupon']); // Limpiar cupón tras compra exitosa
-            $_SESSION['pedido_exitoso_id'] = $nuevo_pedido_id;
-            header("Location: " . $base_url . "?page=gracias&order_id=" . $nuevo_pedido_id);
-            exit;
-
-        } catch (Exception $e) {
-            $conn->rollback();
-            $mensaje_error = "Error al procesar el pedido: " . $e->getMessage();
-            error_log("Error en el proceso de pago: " . $e->getMessage());
+        // Validar que la dirección pertenezca al usuario
+        $stmt_validar = $conn->prepare("SELECT id_direccion FROM direcciones WHERE id_direccion = ? AND id_usuario = ?");
+        $stmt_validar->bind_param("ii", $id_direccion_seleccionada, $id_usuario);
+        $stmt_validar->execute();
+        $resultado_validar = $stmt_validar->get_result();
+        if ($resultado_validar->num_rows === 0) {
+            throw new Exception("Dirección de envío inválida.");
         }
+
+        // Recalcular el total en el servidor (seguridad)
+        $ids_variantes = array_keys($_SESSION['carrito']);
+        $placeholders = implode(',', array_fill(0, count($ids_variantes), '?'));
+        $tipos = str_repeat('i', count($ids_variantes));
+
+        $stmt_precios = $conn->prepare("
+            SELECT v.id_variante, v.precio, v.stock
+            FROM variantes_producto AS v
+            WHERE v.id_variante IN ($placeholders)
+        ");
+        $stmt_precios->bind_param($tipos, ...$ids_variantes);
+        $stmt_precios->execute();
+        $resultado_precios = $stmt_precios->get_result();
+
+        $precios_reales = [];
+        $stock_actual = [];
+        while ($fila = $resultado_precios->fetch_assoc()) {
+            $precios_reales[$fila['id_variante']] = (float) $fila['precio'];
+            $stock_actual[$fila['id_variante']] = (int) $fila['stock'];
+        }
+
+        $total_seguro = validarStockYCalcularTotal($_SESSION['carrito'], $precios_reales, $stock_actual);
+
+        // Aplicar descuento al total seguro antes de guardar
+        if (isset($_SESSION['cupon'])) {
+            $descuento_seguro = calcularDescuentoAplicado($total_seguro, (float) $_SESSION['cupon']['descuento']);
+            $total_seguro = calcularTotalFinal($total_seguro, $descuento_seguro);
+        }
+
+        // Crear el Pedido
+        $stmt_pedido = $conn->prepare("
+            INSERT INTO pedidos (id_usuario, id_direccion_envio, id_estado_pedido, total_pedido, fecha_pedido)
+            VALUES (?, ?, 2, ?, NOW())
+        ");
+        $stmt_pedido->bind_param("iid", $id_usuario, $id_direccion_seleccionada, $total_seguro);
+        $stmt_pedido->execute();
+        $nuevo_pedido_id = $conn->insert_id;
+
+        // Guardar los Detalles del Pedido y actualizar stock
+        $stmt_detalle = $conn->prepare("
+            INSERT INTO detalle_pedido (id_pedido, id_variante, cantidad, precio_historico)
+            VALUES (?, ?, ?, ?)
+        ");
+
+        $stmt_stock = $conn->prepare("
+            UPDATE variantes_producto
+            SET stock = stock - ?
+            WHERE id_variante = ? AND stock >= ?
+        ");
+
+        foreach ($_SESSION['carrito'] as $id_variante => $item) {
+            insertarItemPedido($nuevo_pedido_id, (int) $id_variante, $item['cantidad'], $precios_reales[$id_variante], $stmt_detalle, $stmt_stock);
+        }
+
+        // Registrar la Transacción
+        $stmt_transaccion = $conn->prepare("
+            INSERT INTO transacciones (id_pedido, metodo_pago, monto, estado_pago, id_externo_gateway, fecha_transaccion)
+            VALUES (?, 'Tarjeta (Simulada)', ?, 'exitoso', ?, NOW())
+        ");
+        $id_gateway_simulado = "txn_" . bin2hex(random_bytes(16));
+        $stmt_transaccion->bind_param("ids", $nuevo_pedido_id, $total_seguro, $id_gateway_simulado);
+        $stmt_transaccion->execute();
+
+        // Confirmar transacción
+        $conn->commit();
+
+        // Limpiar carrito y redirigir
+        $_SESSION['carrito'] = [];
+        unset($_SESSION['cupon']); // Limpiar cupón tras compra exitosa
+        $_SESSION['pedido_exitoso_id'] = $nuevo_pedido_id;
+        header("Location: " . $base_url . "?page=gracias&order_id=" . $nuevo_pedido_id);
+        exit;
+
+    } catch (Exception $e) {
+        $conn->rollback();
+        $mensaje_error = "Error al procesar el pedido: " . $e->getMessage();
+        error_log("Error en el proceso de pago: " . $e->getMessage());
     }
 }
 

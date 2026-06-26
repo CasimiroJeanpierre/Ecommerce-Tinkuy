@@ -1,4 +1,16 @@
 <?php
+/**
+ * Componente de tabla de top 5 productos más vendidos del dashboard del vendedor.
+ * Muestra dos secciones: el ranking de los 5 productos con más unidades vendidas
+ * y la lista de productos activos del vendedor que aún no han generado ventas.
+ * Estos datos ayudan al vendedor a identificar su catálogo más y menos exitoso.
+ *
+ * Variables esperadas desde el scope del dashboard (src/Views/vendedor/dashboard.php):
+ *   $top_5_productos      (mysqli_result) - Cursor con nombre_producto, total_vendido
+ *                                           (puede usarse como $resultado_top en la vista)
+ *   $productos_sin_ventas (mysqli_result) - Cursor con nombre_producto de los productos
+ *                                           activos del vendedor sin ninguna venta registrada
+ */
 // Vista parcial para el listado de productos top del dashboard
 ?>
 <div class="card mb-4">

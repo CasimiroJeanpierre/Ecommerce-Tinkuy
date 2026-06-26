@@ -1,13 +1,38 @@
 <?php
 // src/Controllers/VendedorController.php
-// Convertimos el controlador procedimental en una clase para usar en MVC
 if (session_status() === PHP_SESSION_NONE)
     session_start();
 
+/**
+ * Controlador de operaciones del vendedor autenticado.
+ * Cubre el ciclo de vida completo de un producto: alta, edición, cambio de estado,
+ * gestión de imágenes adicionales, variantes y perfil del vendedor.
+ *
+ * Patrón de uso desde el router (public/index.php):
+ *   $controller = new VendedorController();   // verifica sesión y rol en __construct
+ *   $datos      = $controller->metodo(...);   // devuelve array para la vista
+ *   extract($datos);
+ *   require BASE_PATH . '/src/Views/vendedor/...';
+ *
+ * Seguridad:
+ *   - __construct() redirige si no hay sesión o el rol no es 'vendedor'
+ *   - Todos los métodos que modifican datos verifican propiedad del producto (anti-IDOR)
+ *   - Las subidas de imagen filtran extensiones por lista blanca y tamaño máximo 2 MB
+ *   - Las operaciones con múltiples escrituras usan transacciones de BD
+ */
 class VendedorController
 {
     private $conn;
     private $base_url;
+
+    /** Extensiones de imagen permitidas */
+    private const ALLOWED_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+    /** Tamaño máximo por imagen adicional en bytes (2 MB) */
+    private const MAX_IMAGE_SIZE = 2097152;
+
+    /** Máximo de imágenes adicionales por producto */
+    private const MAX_ADDITIONAL_IMAGES = 9;
 
     public function __construct()
     {
@@ -15,7 +40,6 @@ class VendedorController
         $this->conn = $conn;
         $this->base_url = defined('BASE_URL') ? BASE_URL : '/Ecommerce-Tinkuy/public/index.php';
 
-        // Validaciones de sesión y rol
         if (!isset($_SESSION['usuario_id'])) {
             header('Location: ' . $this->base_url . '?page=login');
             exit;
@@ -28,8 +52,429 @@ class VendedorController
     }
 
     /**
-     * Listar productos del vendedor (migrado desde la vista procedural)
-     * @return array Datos para la vista
+     * Normaliza el superglobal $_FILES para un input múltiple o único.
+     *
+     * @param array $files Entrada de $_FILES['campo']
+     * @return array<int, array{name:string, error:int, size:int, tmp_name:string}>
+     */
+    private function normalizarFiles(array $files): array
+    {
+        if (!is_array($files['name'])) {
+            return [[
+                'name'     => $files['name'],
+                'error'    => $files['error'],
+                'size'     => $files['size'],
+                'tmp_name' => $files['tmp_name'],
+            ]];
+        }
+        $resultado = [];
+        foreach ($files['name'] as $i => $nombre) {
+            $resultado[] = [
+                'name'     => $nombre,
+                'error'    => $files['error'][$i],
+                'size'     => $files['size'][$i],
+                'tmp_name' => $files['tmp_name'][$i],
+            ];
+        }
+        return $resultado;
+    }
+
+    /**
+     * Inserta las variantes iniciales de un producto recién creado desde $_POST['variantes'].
+     * Omite variantes incompletas o con datos inválidos; lanza Exception si hay duplicados.
+     *
+     * @param int    $id_producto ID del producto al que pertenecen las variantes
+     * @param string $nombre      Nombre del producto (usado para generar el SKU)
+     * @throws Exception Si se detectan variantes duplicadas (misma talla+color)
+     */
+    private function procesarVariantesIniciales(int $id_producto, string $nombre): void
+    {
+        if (!isset($_POST['variantes']) || !is_array($_POST['variantes'])) {
+            return;
+        }
+        $stmt_variante = $this->conn->prepare(
+            "INSERT INTO variantes_producto (id_producto, talla, color, sku, precio, stock) VALUES (?, ?, ?, ?, ?, ?)"
+        );
+        $variantes_agregadas = [];
+
+        foreach ($_POST['variantes'] as $v) {
+            if (empty($v['precio']) || !isset($v['stock'])) {
+                continue;
+            }
+            $talla = isset($v['talla']) ? strip_tags(trim($v['talla'])) : '';
+            $color = isset($v['color']) ? strip_tags(trim($v['color'])) : '';
+
+            if (!empty($talla) && !preg_match('/^[a-zA-Z0-9\sñáéíóúÁÉÍÓÚ.,\-_]+$/u', $talla)) {
+                throw new \Exception("La talla solo puede contener letras, números y algunos signos básicos.");
+            }
+            if (!empty($color) && !preg_match('/^[a-zA-Z0-9\sñáéíóúÁÉÍÓÚ.,\-_]+$/u', $color)) {
+                throw new \Exception("El color solo puede contener letras, números y algunos signos básicos.");
+            }
+
+            $tallaFinal = ($talla === '') ? 'Única' : $talla;
+            $colorFinal = ($color === '') ? 'Estándar' : $color;
+            $precio     = filter_var($v['precio'], FILTER_VALIDATE_FLOAT);
+            $stock      = filter_var($v['stock'],  FILTER_VALIDATE_INT);
+
+            if ($precio === false || $stock === false || $precio <= 0 || $stock < 0) {
+                continue;
+            }
+            $key_var = $tallaFinal . '-' . $colorFinal;
+            if (in_array($key_var, $variantes_agregadas)) {
+                throw new \Exception("No puedes crear variantes duplicadas con la misma talla ($tallaFinal) y color ($colorFinal).");
+            }
+            $variantes_agregadas[] = $key_var;
+
+            $talla_sku = preg_replace('/[^A-Za-z0-9]/', '', $tallaFinal);
+            $color_sku = preg_replace('/[^A-Za-z0-9]/', '', $colorFinal);
+            $sku = strtoupper(substr($nombre, 0, 3)) . '-' . $id_producto . '-' . $talla_sku . '-' . $color_sku . '-' . rand(1000, 9999);
+            $stmt_variante->bind_param("isssdi", $id_producto, $tallaFinal, $colorFinal, $sku, $precio, $stock);
+            $stmt_variante->execute();
+        }
+        $stmt_variante->close();
+    }
+
+    /**
+     * Actualiza precio/stock de una variante o la desactiva, previa verificación de propiedad.
+     * Si los datos incluyen clave 'desactivar', ejecuta el statement de desactivación sin validar precio/stock.
+     * Si los datos son de actualización, valida que precio > 0 y stock >= 0 antes de ejecutar.
+     *
+     * @param int           $id_variante    ID de la variante a modificar
+     * @param int           $id_producto    ID del producto al que pertenece la variante
+     * @param int           $id_vendedor    ID del vendedor autenticado (verificación anti-IDOR)
+     * @param array         $datos          Array con claves 'precio', 'stock' y opcionalmente 'desactivar'
+     * @param \mysqli_stmt  $stmt_update    Statement preparado para UPDATE precio/stock
+     * @param \mysqli_stmt  $stmt_desactivar Statement preparado para marcar estado='inactivo'
+     * @return void
+     * @throws Exception Si la variante no pertenece al vendedor o si precio/stock son inválidos
+     */
+    private function actualizarODesactivarVariante(
+        int $id_variante,
+        int $id_producto,
+        int $id_vendedor,
+        array $datos,
+        \mysqli_stmt $stmt_update,
+        \mysqli_stmt $stmt_desactivar
+    ): void {
+        $stmt_check = $this->conn->prepare(
+            "SELECT 1 FROM variantes_producto vp
+             JOIN productos p ON vp.id_producto = p.id_producto
+             WHERE vp.id_variante = ? AND p.id_vendedor = ?"
+        );
+        $stmt_check->bind_param("ii", $id_variante, $id_vendedor);
+        $stmt_check->execute();
+        $ok = $stmt_check->get_result()->num_rows > 0;
+        $stmt_check->close();
+
+        if (!$ok) {
+            throw new \Exception("Permiso denegado variante $id_variante.");
+        }
+        if (isset($datos['desactivar'])) {
+            $stmt_desactivar->bind_param("ii", $id_variante, $id_producto);
+            $stmt_desactivar->execute();
+            return;
+        }
+        $precio = filter_var($datos['precio'], FILTER_VALIDATE_FLOAT);
+        $stock  = filter_var($datos['stock'],  FILTER_VALIDATE_INT);
+        if ($precio === false || $stock === false || $precio <= 0 || $stock < 0) {
+            throw new \Exception("Datos inválidos variante $id_variante.");
+        }
+        $stmt_update->bind_param("diii", $precio, $stock, $id_variante, $id_producto);
+        $stmt_update->execute();
+    }
+
+    /**
+     * Elimina físicamente la imagen principal anterior si el nombre cambió.
+     *
+     * @param int    $id_producto  ID del producto cuya imagen principal se reemplazó
+     * @param string $nombre_nuevo Nombre del nuevo archivo (para no borrar si coincide)
+     */
+    private function eliminarImagenPrincipalAnterior(int $id_producto, string $nombre_nuevo): void
+    {
+        $stmt = $this->conn->prepare("SELECT imagen_principal FROM productos WHERE id_producto = ?");
+        $stmt->bind_param("i", $id_producto);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$row) {
+            return;
+        }
+        $old_img = $row['imagen_principal'];
+        if (empty($old_img) || $old_img === $nombre_nuevo) {
+            return;
+        }
+        $old_path = BASE_PATH . '/public/img/productos/' . $old_img;
+        if (file_exists($old_path) && is_file($old_path)) {
+            @unlink($old_path);
+        }
+    }
+
+    /**
+     * Valida, mueve y registra una nueva imagen principal subida en $_FILES['imagen_principal'].
+     * Elimina la imagen anterior del disco si el nombre cambió.
+     * Devuelve el nombre de archivo limpio, o null si no se subió ninguna imagen.
+     *
+     * @param int $id_producto ID del producto al que pertenece la imagen
+     * @return string|null
+     * @throws Exception Si la extensión no está permitida o la copia falla
+     */
+    private function procesarNuevaImagenPrincipal(int $id_producto): ?string
+    {
+        if (!isset($_FILES['imagen_principal']) || $_FILES['imagen_principal']['error'] != UPLOAD_ERR_OK) {
+            return null;
+        }
+        $fileExtension = strtolower(pathinfo($_FILES['imagen_principal']['name'], PATHINFO_EXTENSION));
+        if (!in_array($fileExtension, self::ALLOWED_IMAGE_EXTENSIONS)) {
+            throw new \Exception("El formato de la imagen principal no está permitido (solo JPG, PNG, WEBP).");
+        }
+        $nombre_limpio = preg_replace('/[^a-zA-Z0-9.\-_]/', '_', basename($_FILES['imagen_principal']['name']));
+        $dest_path     = BASE_PATH . '/public/img/productos/' . $nombre_limpio;
+        if (!move_uploaded_file($_FILES['imagen_principal']['tmp_name'], $dest_path)) {
+            throw new \Exception('Error al mover la imagen subida.');
+        }
+        $this->eliminarImagenPrincipalAnterior($id_producto, $nombre_limpio);
+        return $nombre_limpio;
+    }
+
+    /**
+     * Procesa y persiste las imágenes adicionales de un producto.
+     * Lanza Exception ante errores de formato, tamaño o escritura.
+     *
+     * @param int $id_producto          ID del producto destino
+     * @param int $espacios_disponibles Cuántas imágenes más se pueden agregar
+     * @throws Exception Si el formato, tamaño o escritura de archivo falla
+     */
+    private function procesarImagenesAdicionales(int $id_producto, int $espacios_disponibles): void
+    {
+        if (!isset($_FILES['imagenes_adicionales']) || $espacios_disponibles <= 0) {
+            return;
+        }
+
+        $stmt_img = $this->conn->prepare(
+            "INSERT INTO producto_imagenes (id_producto, ruta_imagen) VALUES (?, ?)"
+        );
+        $archivos  = $this->normalizarFiles($_FILES['imagenes_adicionales']);
+        $agregadas = 0;
+
+        foreach ($archivos as $idx => $file) {
+            if ($agregadas >= $espacios_disponibles) {
+                break;
+            }
+            if ($file['error'] === UPLOAD_ERR_NO_FILE) {
+                continue;
+            }
+            if ($file['error'] !== UPLOAD_ERR_OK) {
+                throw new Exception("Error al subir imagen (Código: {$file['error']}).");
+            }
+
+            $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+            if (!in_array($ext, self::ALLOWED_IMAGE_EXTENSIONS)) {
+                throw new Exception("Tipo de archivo de imagen adicional no permitido: {$file['name']}.");
+            }
+            if ($file['size'] > self::MAX_IMAGE_SIZE) {
+                throw new Exception("La imagen '{$file['name']}' supera el límite de 2MB.");
+            }
+
+            $nombre_limpio = time() . '_' . $idx . '_'
+                . preg_replace('/[^a-zA-Z0-9.\-_]/', '_', basename($file['name']));
+            $dest = BASE_PATH . '/public/img/productos/' . $nombre_limpio;
+
+            if (!move_uploaded_file($file['tmp_name'], $dest)) {
+                throw new Exception("Error al guardar la imagen: {$file['name']}.");
+            }
+
+            $stmt_img->bind_param("is", $id_producto, $nombre_limpio);
+            $stmt_img->execute();
+            $agregadas++;
+        }
+
+        $stmt_img->close();
+    }
+
+    /**
+     * Elimina físicamente una imagen adicional del disco y su registro en producto_imagenes.
+     * La condición WHERE incluye id_producto para evitar que un vendedor elimine imágenes ajenas.
+     *
+     * @param int $id_imagen   ID del registro en producto_imagenes a eliminar
+     * @param int $id_producto ID del producto propietario (verificación de pertenencia)
+     * @return string Mensaje de confirmación "Imagen eliminada de la galería." o '' si execute falla
+     */
+    private function procesarEliminacionImagen(int $id_imagen, int $id_producto): string
+    {
+        $stmt_get = $this->conn->prepare("SELECT ruta_imagen FROM producto_imagenes WHERE id_imagen = ? AND id_producto = ?");
+        $stmt_get->bind_param("ii", $id_imagen, $id_producto);
+        $stmt_get->execute();
+        $row_img  = $stmt_get->get_result()->fetch_assoc();
+        $stmt_get->close();
+        $img_path = $row_img ? BASE_PATH . '/public/img/productos/' . $row_img['ruta_imagen'] : '';
+        if ($img_path !== '' && file_exists($img_path) && is_file($img_path)) {
+            @unlink($img_path);
+        }
+
+        $stmt_del = $this->conn->prepare("DELETE FROM producto_imagenes WHERE id_imagen = ? AND id_producto = ?");
+        $stmt_del->bind_param("ii", $id_imagen, $id_producto);
+        $ok = $stmt_del->execute();
+        $stmt_del->close();
+        return $ok ? "Imagen eliminada de la galería." : '';
+    }
+
+    /**
+     * Actualiza nombre, descripción, categoría e imagen principal del producto desde $_POST.
+     * Si se sube una nueva imagen principal, delega en procesarNuevaImagenPrincipal() que
+     * también elimina la imagen anterior del disco. Agrega imágenes adicionales si vienen en $_FILES.
+     *
+     * @param int $id_producto ID del producto a actualizar
+     * @param int $id_vendedor ID del vendedor autenticado (incluido en el WHERE del UPDATE para anti-IDOR)
+     * @return string Mensaje de confirmación "Producto actualizado."
+     * @throws Exception Si nombre/categoría están vacíos, el nombre tiene caracteres inválidos,
+     *                   el UPDATE falla, o la subida de imágenes falla
+     */
+    private function procesarActualizacionProducto(int $id_producto, int $id_vendedor): string
+    {
+        $nombre       = strip_tags(trim($_POST['nombre_producto']));
+        $descripcion  = strip_tags(trim($_POST['descripcion']));
+        $id_categoria = (int) $_POST['id_categoria'];
+        if (empty($nombre) || $id_categoria === 0) {
+            throw new Exception("Nombre y categoría obligatorios.");
+        }
+        if (!preg_match('/^[a-zA-Z0-9\sñáéíóúÁÉÍÓÚ.,\-_]+$/u', $nombre)) {
+            throw new Exception("El nombre del producto solo puede contener letras, números, espacios, puntos, comas y guiones.");
+        }
+
+        $imagen_query = "";
+        $params = [$nombre, $descripcion, $id_categoria];
+        $types  = "ssi";
+
+        $nombre_limpio = $this->procesarNuevaImagenPrincipal($id_producto);
+        if ($nombre_limpio !== null) {
+            $imagen_query .= ", imagen_principal = ?";
+            $params[]      = $nombre_limpio;
+            $types        .= "s";
+        }
+
+        $params[] = $id_producto;
+        $params[] = $id_vendedor;
+        $types   .= "ii";
+
+        $stmt = $this->conn->prepare("UPDATE productos SET nombre_producto = ?, descripcion = ?, id_categoria = ? {$imagen_query} WHERE id_producto = ? AND id_vendedor = ?");
+        $stmt->bind_param($types, ...$params);
+        if (!$stmt->execute()) {
+            throw new Exception("Error al actualizar producto.");
+        }
+        $stmt->close();
+
+        if (isset($_FILES['imagenes_adicionales'])) {
+            $stmt_count = $this->conn->prepare("SELECT COUNT(*) as total FROM producto_imagenes WHERE id_producto = ?");
+            $stmt_count->bind_param("i", $id_producto);
+            $stmt_count->execute();
+            $current_images = $stmt_count->get_result()->fetch_assoc()['total'];
+            $stmt_count->close();
+
+            $this->procesarImagenesAdicionales(
+                $id_producto,
+                self::MAX_ADDITIONAL_IMAGES - $current_images
+            );
+        }
+
+        return "Producto actualizado.";
+    }
+
+    /**
+     * Agrega una nueva variante a un producto del vendedor autenticado.
+     * Verifica propiedad del producto, valida duplicados y genera un SKU único.
+     *
+     * @param int $id_producto ID del producto al que se agrega la variante
+     * @param int $id_vendedor ID del vendedor autenticado (para verificar propiedad)
+     * @return string Mensaje de confirmación tras alta exitosa
+     * @throws Exception Si los datos son inválidos, el producto no pertenece al vendedor
+     *                   o ya existe una variante con la misma combinación talla+color
+     */
+    private function procesarAgregadoVariante(int $id_producto, int $id_vendedor): string
+    {
+        $talla  = strip_tags(trim($_POST['talla']));
+        $color  = strip_tags(trim($_POST['color']));
+        $precio = filter_var(trim($_POST['precio']), FILTER_VALIDATE_FLOAT);
+        $stock  = filter_var(trim($_POST['stock']),  FILTER_VALIDATE_INT);
+
+        if (!empty($talla) && !preg_match('/^[a-zA-Z0-9\sñáéíóúÁÉÍÓÚ.,\-_]+$/u', $talla)) {
+            throw new Exception("La talla solo puede contener letras, números y signos básicos.");
+        }
+        if (!empty($color) && !preg_match('/^[a-zA-Z0-9\sñáéíóúÁÉÍÓÚ.,\-_]+$/u', $color)) {
+            throw new Exception("El color solo puede contener letras, números y signos básicos.");
+        }
+        if ($precio === false || $stock === false || $precio <= 0 || $stock < 0) {
+            throw new Exception("Precio/Stock inválidos.");
+        }
+
+        $stmt_check_prop = $this->conn->prepare("SELECT nombre_producto FROM productos WHERE id_producto = ? AND id_vendedor = ?");
+        $stmt_check_prop->bind_param("ii", $id_producto, $id_vendedor);
+        $stmt_check_prop->execute();
+        $res_check = $stmt_check_prop->get_result();
+        if ($res_check->num_rows === 0) {
+            throw new Exception("Permiso denegado.");
+        }
+        $nombre_prod_temp = $res_check->fetch_assoc()['nombre_producto'];
+        $stmt_check_prop->close();
+
+        $tallaFinal = ($talla === '' ? 'Única' : $talla);
+        $colorFinal = ($color === '' ? 'Estándar' : $color);
+
+        $stmt_check_var = $this->conn->prepare("SELECT id_variante FROM variantes_producto WHERE id_producto = ? AND talla = ? AND color = ?");
+        $stmt_check_var->bind_param("iss", $id_producto, $tallaFinal, $colorFinal);
+        $stmt_check_var->execute();
+        if ($stmt_check_var->get_result()->num_rows > 0) {
+            $stmt_check_var->close();
+            throw new Exception("Ya existe una variante con la talla '$tallaFinal' y color '$colorFinal'.");
+        }
+        $stmt_check_var->close();
+
+        $talla_sku    = preg_replace('/[^A-Za-z0-9]/', '', $tallaFinal);
+        $color_sku    = preg_replace('/[^A-Za-z0-9]/', '', $colorFinal);
+        $sku_simulado = strtoupper(substr($nombre_prod_temp, 0, 3)) . '-' . $id_producto . '-' . $talla_sku . '-' . $color_sku . '-' . rand(1000, 9999);
+
+        $stmt = $this->conn->prepare("INSERT INTO variantes_producto (id_producto, talla, color, sku, precio, stock) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("isssdi", $id_producto, $tallaFinal, $colorFinal, $sku_simulado, $precio, $stock);
+        if (!$stmt->execute()) {
+            throw new Exception("Error al agregar variante: " . $this->conn->error);
+        }
+        $stmt->close();
+        return "Nueva variante agregada.";
+    }
+
+    /**
+     * Itera sobre $_POST['variantes'] y actualiza o desactiva cada variante del vendedor.
+     * Verifica que el producto pertenezca al vendedor antes de procesar.
+     *
+     * @param int $id_producto ID del producto cuyas variantes se actualizan
+     * @param int $id_vendedor ID del vendedor autenticado (para verificar propiedad)
+     * @return void
+     * @throws Exception Si alguna variante tiene precio/stock inválidos
+     */
+    private function procesarActualizacionVariantesVendedor(int $id_producto, int $id_vendedor): void
+    {
+        $stmt_update     = $this->conn->prepare("UPDATE variantes_producto SET precio = ?, stock = ? WHERE id_variante = ? AND id_producto = ?");
+        $stmt_desactivar = $this->conn->prepare("UPDATE variantes_producto SET estado = 'inactivo' WHERE id_variante = ? AND id_producto = ?");
+        $variantes_post  = is_array($_POST['variantes'] ?? null) ? $_POST['variantes'] : [];
+        foreach ($variantes_post as $id_variante => $datos) {
+            $this->actualizarODesactivarVariante((int) $id_variante, $id_producto, $id_vendedor, $datos, $stmt_update, $stmt_desactivar);
+        }
+        $stmt_update->close();
+        $stmt_desactivar->close();
+    }
+
+    /**
+     * Lista todos los productos del vendedor autenticado con sus variantes serializadas en JSON.
+     * La consulta usa GROUP_CONCAT + JSON_OBJECT para condensar todas las variantes de cada producto
+     * en un único campo 'variantes_json'; el router o la vista deben hacer json_decode() sobre él.
+     * Los campos JSON por variante incluyen: id_variante, talla, color, precio, stock, estado_variante.
+     * El resultado se ordena: primero los activos (ASC por estado) y luego alfabéticamente por nombre.
+     *
+     * Restricción de propiedad:
+     *   La cláusula WHERE p.id_vendedor = ? limita los resultados al vendedor en sesión,
+     *   garantizando que un vendedor nunca vea productos ajenos en este listado.
+     *
+     * @return array{productos: array, nombre_vendedor: string, id_vendedor: int, base_url: string}
      */
     public function listarProductos()
     {
@@ -81,10 +526,14 @@ class VendedorController
     }
 
     /**
-     * Cambiar estado de un producto (activar/inactivar)
-     * @param int $id_producto
-     * @param string $nuevo_estado
-     * @return array
+     * Activa o desactiva un producto del vendedor autenticado.
+     * Antes de actualizar verifica propiedad: si el par (id_producto, id_vendedor) no existe
+     * en la BD, retorna éxito=false sin ejecutar el UPDATE (anti-IDOR).
+     * El nuevo_estado se normaliza: cualquier valor distinto de 'activo' se trata como 'inactivo'.
+     *
+     * @param int    $id_producto  ID del producto a modificar
+     * @param string $nuevo_estado Estado deseado: 'activo' o 'inactivo'
+     * @return array{success: bool, mensaje: string} Éxito y mensaje descriptivo para la sesión flash
      */
     public function cambiarEstado($id_producto, $nuevo_estado)
     {
@@ -114,7 +563,15 @@ class VendedorController
         return ['success' => false, 'mensaje' => 'Error al actualizar el estado del producto.'];
     }
 
-    // Métodos stub para futuras implementaciones (agregar/editar/eliminar/listarVentas/listarEnvios)
+    /**
+     * Muestra y procesa el formulario de alta de un nuevo producto del vendedor.
+     * En POST: abre una transacción para garantizar consistencia entre el INSERT del producto,
+     * la subida de imagen principal (opcional), las imágenes adicionales y las variantes iniciales.
+     * Si cualquier paso falla se hace rollback completo.
+     *
+     * @return array{nombre_vendedor: string, categorias_jerarquia: array,
+     *               mensaje_error: string|null, mensaje_exito: string|null, base_url: string}
+     */
     public function agregarProducto()
     {
         $id_vendedor = $_SESSION['usuario_id'];
@@ -166,92 +623,11 @@ class VendedorController
                 $id_producto = $this->conn->insert_id;
                 $stmt->close();
 
-                // Insertar Múltiples Imágenes Adicionales (Respetando Límite de 9)
-                if (isset($_FILES['imagenes_adicionales'])) {
-                    $stmt_img = $this->conn->prepare("INSERT INTO producto_imagenes (id_producto, ruta_imagen) VALUES (?, ?)");
-
-                    // Normalizamos las variables para manejar correctamente tanto arrays multiples como archivos individuales
-                    $nombres = is_array($_FILES['imagenes_adicionales']['name']) ? $_FILES['imagenes_adicionales']['name'] : [$_FILES['imagenes_adicionales']['name']];
-                    $errores = is_array($_FILES['imagenes_adicionales']['error']) ? $_FILES['imagenes_adicionales']['error'] : [$_FILES['imagenes_adicionales']['error']];
-                    $tams = is_array($_FILES['imagenes_adicionales']['size']) ? $_FILES['imagenes_adicionales']['size'] : [$_FILES['imagenes_adicionales']['size']];
-                    $tmps = is_array($_FILES['imagenes_adicionales']['tmp_name']) ? $_FILES['imagenes_adicionales']['tmp_name'] : [$_FILES['imagenes_adicionales']['tmp_name']];
-
-                    $total_files = count($nombres);
-                    $agregadas = 0;
-
-                    for ($i = 0; $i < $total_files; $i++) {
-                        if ($agregadas >= 9)
-                            break; // Límite estricto
-
-                        if ($errores[$i] == UPLOAD_ERR_OK) {
-                            $fileName = $nombres[$i];
-                            $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-                            if (!in_array($fileExt, $allowedfileExtensions)) {
-                                throw new Exception("Tipo de archivo de imagen adicional no permitido.");
-                            }
-                            if ($tams[$i] <= 2 * 1024 * 1024) {
-                                $nom_limpio = preg_replace('/[^a-zA-Z0-9.\-_]/', '_', basename($fileName));
-                                $nom_limpio = time() . '_' . $i . '_' . $nom_limpio; // Asegurar unicidad para evitar sobrescrituras
-                                $dest = BASE_PATH . '/public/img/productos/' . $nom_limpio;
-                                if (move_uploaded_file($tmps[$i], $dest)) {
-                                    $stmt_img->bind_param("is", $id_producto, $nom_limpio);
-                                    $stmt_img->execute();
-                                    $agregadas++;
-                                } else {
-                                    throw new Exception("Error al guardar una de las imágenes adicionales en el servidor.");
-                                }
-                            } else {
-                                throw new Exception("La imagen adicional '" . $fileName . "' supera el límite permitido de 2MB.");
-                            }
-                        }
-                    }
-                    $stmt_img->close();
-                }
+                // Insertar imágenes adicionales respetando el límite máximo
+                $this->procesarImagenesAdicionales($id_producto, self::MAX_ADDITIONAL_IMAGES);
 
                 // Procesar variantes iniciales
-                if (isset($_POST['variantes']) && is_array($_POST['variantes'])) {
-                    $stmt_variante = $this->conn->prepare("INSERT INTO variantes_producto (id_producto, talla, color, sku, precio, stock) VALUES (?, ?, ?, ?, ?, ?)");
-                    $variantes_agregadas = [];
-
-                    foreach ($_POST['variantes'] as $v) {
-                        // Validar solo precio y stock (talla/color pueden estar vacíos)
-                        if (empty($v['precio']) || !isset($v['stock'])) {
-                            continue; // Saltamos variantes incompletas
-                        }
-
-                        $talla = isset($v['talla']) ? strip_tags(trim($v['talla'])) : '';
-                        $color = isset($v['color']) ? strip_tags(trim($v['color'])) : '';
-
-                        if (!empty($talla) && !preg_match('/^[a-zA-Z0-9\sñáéíóúÁÉÍÓÚ.,\-_]+$/u', $talla)) {
-                            throw new Exception("La talla solo puede contener letras, números y algunos signos básicos.");
-                        }
-                        if (!empty($color) && !preg_match('/^[a-zA-Z0-9\sñáéíóúÁÉÍÓÚ.,\-_]+$/u', $color)) {
-                            throw new Exception("El color solo puede contener letras, números y algunos signos básicos.");
-                        }
-
-                        $tallaFinal = ($talla === '') ? 'Única' : $talla;
-                        $colorFinal = ($color === '') ? 'Estándar' : $color;
-                        $precio = filter_var($v['precio'], FILTER_VALIDATE_FLOAT);
-                        $stock = filter_var($v['stock'], FILTER_VALIDATE_INT);
-
-                        if ($precio === false || $stock === false || $precio <= 0 || $stock < 0) {
-                            continue; // Saltamos variantes con datos inválidos
-                        }
-
-                        $key_var = $tallaFinal . '-' . $colorFinal;
-                        if (in_array($key_var, $variantes_agregadas)) {
-                            throw new Exception("No puedes crear variantes duplicadas con la misma talla ($tallaFinal) y color ($colorFinal).");
-                        }
-                        $variantes_agregadas[] = $key_var;
-
-                        $talla_sku = preg_replace('/[^A-Za-z0-9]/', '', $tallaFinal);
-                        $color_sku = preg_replace('/[^A-Za-z0-9]/', '', $colorFinal);
-                        $sku = strtoupper(substr($nombre, 0, 3)) . '-' . $id_producto . '-' . $talla_sku . '-' . $color_sku . '-' . rand(1000, 9999);
-                        $stmt_variante->bind_param("isssdi", $id_producto, $tallaFinal, $colorFinal, $sku, $precio, $stock);
-                        $stmt_variante->execute();
-                    }
-                    $stmt_variante->close();
-                }
+                $this->procesarVariantesIniciales($id_producto, $nombre);
 
                 $this->conn->commit();
                 $_SESSION['mensaje_exito'] = "Producto creado exitosamente.";
@@ -286,7 +662,16 @@ class VendedorController
     }
 
     /**
-     * Cambia el estado de una variante de producto (activo/inactivo)
+     * Activa o desactiva una variante específica de un producto del vendedor.
+     * Realiza una verificación triple antes de actualizar: id_variante debe pertenecer
+     * al id_producto, y ese id_producto debe pertenecer al id_vendedor de sesión.
+     * Si la verificación falla retorna éxito=false sin ejecutar el UPDATE (anti-IDOR).
+     * Envuelve toda la lógica en try/catch para capturar errores de BD.
+     *
+     * @param int    $id_producto  ID del producto propietario de la variante
+     * @param int    $id_variante  ID de la variante a modificar
+     * @param string $nuevo_estado Nuevo estado: 'activo' o 'inactivo'
+     * @return array{success: bool, mensaje: string} Éxito y mensaje descriptivo de la operación
      */
     public function cambiarEstadoVariante($id_producto, $id_variante, $nuevo_estado)
     {
@@ -338,6 +723,20 @@ class VendedorController
         }
     }
 
+    /**
+     * Muestra y procesa la edición de un producto existente del vendedor.
+     * Verifica propiedad del producto antes de cualquier operación (anti-IDOR); redirige
+     * a la lista si el producto no existe o no pertenece al vendedor autenticado.
+     * En POST despacha la acción indicada en $_POST['accion']:
+     *   actualizar_producto  — Actualiza nombre, descripción, categoría e imágenes
+     *   actualizar_variantes — Actualiza precios/stocks o desactiva variantes individualmente
+     *   agregar_variante     — Agrega una nueva variante con validación de duplicados
+     *   eliminar_imagen      — Elimina una imagen adicional del disco y la BD
+     *
+     * @param int $id_producto ID del producto a editar (validado en el router antes de llamar)
+     * @return array{nombre_vendedor: string, producto: array, variantes: array, imagenes: array,
+     *               categorias_jerarquia: array, mensaje_error: string, mensaje_exito: string, base_url: string}
+     */
     public function editarProducto($id_producto)
     {
         $id_vendedor = $_SESSION['usuario_id'];
@@ -367,254 +766,31 @@ class VendedorController
 
                 // --- ACCIÓN: ACTUALIZAR PRODUCTO GENERAL ---
                 if (isset($_POST['accion']) && $_POST['accion'] === 'actualizar_producto') {
-                    $nombre = strip_tags(trim($_POST['nombre_producto']));
-                    $descripcion = strip_tags(trim($_POST['descripcion']));
-                    $id_categoria = (int) $_POST['id_categoria'];
-                    if (empty($nombre) || $id_categoria === 0) {
-                        throw new Exception("Nombre y categoría obligatorios.");
-                    }
-                    if (!preg_match('/^[a-zA-Z0-9\sñáéíóúÁÉÍÓÚ.,\-_]+$/u', $nombre)) {
-                        throw new Exception("El nombre del producto solo puede contener letras, números, espacios, puntos, comas y guiones.");
-                    }
-
-                    $imagen_query = "";
-                    $params = [$nombre, $descripcion, $id_categoria];
-                    $types = "ssi";
-
-                    // Lógica de Subida de Imagen Principal
-                    if (isset($_FILES['imagen_principal']) && $_FILES['imagen_principal']['error'] == UPLOAD_ERR_OK) {
-                        $fileName = $_FILES['imagen_principal']['name'];
-                        $fileExtension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-                        $allowedfileExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-
-                        if (!in_array($fileExtension, $allowedfileExtensions)) {
-                            throw new Exception("El formato de la imagen principal no está permitido (solo JPG, PNG, WEBP).");
-                        }
-
-                        $nombre_limpio = preg_replace('/[^a-zA-Z0-9.\-_]/', '_', basename($fileName));
-                        $dest_path = BASE_PATH . '/public/img/productos/' . $nombre_limpio;
-                        if (!move_uploaded_file($_FILES['imagen_principal']['tmp_name'], $dest_path)) {
-                            throw new Exception('Error al mover la imagen subida.');
-                        }
-
-                        // Eliminar imagen anterior físicamente del servidor
-                        $stmt_old = $this->conn->prepare("SELECT imagen_principal FROM productos WHERE id_producto = ?");
-                        $stmt_old->bind_param("i", $id_producto);
-                        $stmt_old->execute();
-                        $res_old = $stmt_old->get_result();
-                        if ($row_old = $res_old->fetch_assoc()) {
-                            $old_img = $row_old['imagen_principal'];
-                            if (!empty($old_img) && $old_img !== $nombre_limpio) {
-                                $old_path = BASE_PATH . '/public/img/productos/' . $old_img;
-                                if (file_exists($old_path) && is_file($old_path)) {
-                                    @unlink($old_path);
-                                }
-                            }
-                        }
-                        $stmt_old->close();
-
-                        $imagen_query .= ", imagen_principal = ?";
-                        $params[] = $nombre_limpio;
-                        $types .= "s";
-                    }
-
-                    $params[] = $id_producto;
-                    $params[] = $id_vendedor;
-                    $types .= "ii";
-
-                    $stmt = $this->conn->prepare("UPDATE productos SET nombre_producto = ?, descripcion = ?, id_categoria = ? {$imagen_query} WHERE id_producto = ? AND id_vendedor = ?");
-                    $stmt->bind_param($types, ...$params);
-                    if (!$stmt->execute()) {
-                        throw new Exception("Error al actualizar producto.");
-                    }
-                    $stmt->close();
-
-                    // Agregar nuevas imágenes adicionales calculando espacios disponibles
-                    if (isset($_FILES['imagenes_adicionales'])) {
-                        $stmt_count = $this->conn->prepare("SELECT COUNT(*) as total FROM producto_imagenes WHERE id_producto = ?");
-                        $stmt_count->bind_param("i", $id_producto);
-                        $stmt_count->execute();
-                        $current_images = $stmt_count->get_result()->fetch_assoc()['total'];
-                        $stmt_count->close();
-
-                        $espacios_disponibles = 9 - $current_images;
-
-                        if ($espacios_disponibles > 0) {
-                            $stmt_img = $this->conn->prepare("INSERT INTO producto_imagenes (id_producto, ruta_imagen) VALUES (?, ?)");
-
-                            // Normalizamos las variables para manejar correctamente tanto arrays múltiples como archivos individuales
-                            $nombres = is_array($_FILES['imagenes_adicionales']['name']) ? $_FILES['imagenes_adicionales']['name'] : [$_FILES['imagenes_adicionales']['name']];
-                            $errores = is_array($_FILES['imagenes_adicionales']['error']) ? $_FILES['imagenes_adicionales']['error'] : [$_FILES['imagenes_adicionales']['error']];
-                            $tams = is_array($_FILES['imagenes_adicionales']['size']) ? $_FILES['imagenes_adicionales']['size'] : [$_FILES['imagenes_adicionales']['size']];
-                            $tmps = is_array($_FILES['imagenes_adicionales']['tmp_name']) ? $_FILES['imagenes_adicionales']['tmp_name'] : [$_FILES['imagenes_adicionales']['tmp_name']];
-
-                            $total_files = count($nombres);
-                            $agregadas = 0;
-
-                            for ($i = 0; $i < $total_files; $i++) {
-                                if ($agregadas >= $espacios_disponibles)
-                                    break;
-
-                                if ($errores[$i] == UPLOAD_ERR_OK) {
-                                    $fileName = $nombres[$i];
-                                    $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-                                    $allowedExt = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-
-                                    if (!in_array($fileExt, $allowedExt)) {
-                                        throw new Exception("El formato de una de las imágenes adicionales no está permitido.");
-                                    }
-                                    if ($tams[$i] <= 2 * 1024 * 1024) {
-                                        $nom_limpio = preg_replace('/[^a-zA-Z0-9.\-_]/', '_', basename($fileName));
-                                        $nom_limpio = time() . '_' . $i . '_' . $nom_limpio;
-                                        $dest = BASE_PATH . '/public/img/productos/' . $nom_limpio;
-                                        if (move_uploaded_file($tmps[$i], $dest)) {
-                                            $stmt_img->bind_param("is", $id_producto, $nom_limpio);
-                                            $stmt_img->execute();
-                                            $agregadas++;
-                                        } else {
-                                            throw new Exception("Error al guardar la imagen: " . $fileName);
-                                        }
-                                    } else {
-                                        throw new Exception("La imagen '" . $fileName . "' supera el tamaño máximo permitido de 2MB.");
-                                    }
-                                } elseif ($errores[$i] !== UPLOAD_ERR_NO_FILE) {
-                                    throw new Exception("Ocurrió un error al subir la imagen adicional (Código de error: " . $errores[$i] . ").");
-                                }
-                            }
-                            $stmt_img->close();
-                        }
-                    }
-
-                    $mensaje_exito = "Producto actualizado.";
+                    $mensaje_exito = $this->procesarActualizacionProducto($id_producto, $id_vendedor);
                 }
 
                 // --- ACCIÓN: ELIMINAR IMAGEN DE LA GALERÍA ---
                 elseif (isset($_POST['accion']) && $_POST['accion'] === 'eliminar_imagen') {
-                    $id_imagen = (int) $_POST['id_imagen'];
-
-                    // Eliminar el archivo físico de la galería
-                    $stmt_get = $this->conn->prepare("SELECT ruta_imagen FROM producto_imagenes WHERE id_imagen = ? AND id_producto = ?");
-                    $stmt_get->bind_param("ii", $id_imagen, $id_producto);
-                    $stmt_get->execute();
-                    $res_get = $stmt_get->get_result();
-                    if ($row_img = $res_get->fetch_assoc()) {
-                        $old_path = BASE_PATH . '/public/img/productos/' . $row_img['ruta_imagen'];
-                        if (file_exists($old_path) && is_file($old_path)) {
-                            @unlink($old_path);
-                        }
-                    }
-                    $stmt_get->close();
-
-                    $stmt_del = $this->conn->prepare("DELETE FROM producto_imagenes WHERE id_imagen = ? AND id_producto = ?");
-                    $stmt_del->bind_param("ii", $id_imagen, $id_producto);
-                    if ($stmt_del->execute()) {
-                        $mensaje_exito = "Imagen eliminada de la galería.";
-                    }
-                    $stmt_del->close();
+                    $id_imagen     = (int) $_POST['id_imagen'];
+                    $mensaje_exito = $this->procesarEliminacionImagen($id_imagen, $id_producto);
                 }
 
                 // --- ACCIÓN: AGREGAR NUEVA VARIANTE (CON IMAGEN) ---
                 elseif (isset($_POST['accion']) && $_POST['accion'] === 'agregar_variante') {
-                    $talla = strip_tags(trim($_POST['talla']));
-                    $color = strip_tags(trim($_POST['color']));
-                    $precio = filter_var(trim($_POST['precio']), FILTER_VALIDATE_FLOAT);
-                    $stock = filter_var(trim($_POST['stock']), FILTER_VALIDATE_INT);
-
-                    if (!empty($talla) && !preg_match('/^[a-zA-Z0-9\sñáéíóúÁÉÍÓÚ.,\-_]+$/u', $talla)) {
-                        throw new Exception("La talla solo puede contener letras, números y signos básicos.");
-                    }
-                    if (!empty($color) && !preg_match('/^[a-zA-Z0-9\sñáéíóúÁÉÍÓÚ.,\-_]+$/u', $color)) {
-                        throw new Exception("El color solo puede contener letras, números y signos básicos.");
-                    }
-
-                    if ($precio === false || $stock === false || $precio <= 0 || $stock < 0) {
-                        throw new Exception("Precio/Stock inválidos.");
-                    }
-
-                    // Verificar propiedad
-                    $stmt_check_prop = $this->conn->prepare("SELECT nombre_producto FROM productos WHERE id_producto = ? AND id_vendedor = ?");
-                    $stmt_check_prop->bind_param("ii", $id_producto, $id_vendedor);
-                    $stmt_check_prop->execute();
-                    $res_check = $stmt_check_prop->get_result();
-                    if ($res_check->num_rows === 0) {
-                        throw new Exception("Permiso denegado.");
-                    }
-                    $nombre_prod_temp = $res_check->fetch_assoc()['nombre_producto'];
-                    $stmt_check_prop->close();
-
-                    $tallaFinal = ($talla === '' ? 'Única' : $talla);
-                    $colorFinal = ($color === '' ? 'Estándar' : $color);
-
-                    // Verificar que la variante no exista ya en este producto
-                    $stmt_check_var = $this->conn->prepare("SELECT id_variante FROM variantes_producto WHERE id_producto = ? AND talla = ? AND color = ?");
-                    $stmt_check_var->bind_param("iss", $id_producto, $tallaFinal, $colorFinal);
-                    $stmt_check_var->execute();
-                    if ($stmt_check_var->get_result()->num_rows > 0) {
-                        $stmt_check_var->close();
-                        throw new Exception("Ya existe una variante con la talla '$tallaFinal' y color '$colorFinal'.");
-                    }
-                    $stmt_check_var->close();
-
-                    $talla_sku = preg_replace('/[^A-Za-z0-9]/', '', $tallaFinal);
-                    $color_sku = preg_replace('/[^A-Za-z0-9]/', '', $colorFinal);
-                    $sku_simulado = strtoupper(substr($nombre_prod_temp, 0, 3)) . '-' . $id_producto . '-' . $talla_sku . '-' . $color_sku . '-' . rand(1000, 9999);
-
-                    $stmt = $this->conn->prepare("INSERT INTO variantes_producto (id_producto, talla, color, sku, precio, stock) VALUES (?, ?, ?, ?, ?, ?)");
-                    $stmt->bind_param("isssdi", $id_producto, $tallaFinal, $colorFinal, $sku_simulado, $precio, $stock);
-                    if ($stmt->execute()) {
-                        $mensaje_exito = "Nueva variante agregada.";
-                    } else {
-                        throw new Exception("Error al agregar variante: " . $this->conn->error);
-                    }
-                    $stmt->close();
+                    $mensaje_exito = $this->procesarAgregadoVariante($id_producto, $id_vendedor);
                 }
-
                 // --- ACCIÓN: ACTUALIZAR / DESACTIVAR VARIANTES EXISTENTES ---
                 elseif (isset($_POST['accion']) && $_POST['accion'] === 'actualizar_variantes') {
-                    $stmt_update = $this->conn->prepare("UPDATE variantes_producto SET precio = ?, stock = ? WHERE id_variante = ? AND id_producto = ?");
-                    $stmt_desactivar = $this->conn->prepare("UPDATE variantes_producto SET estado = 'inactivo' WHERE id_variante = ? AND id_producto = ?");
-
-                    if (isset($_POST['variantes']) && is_array($_POST['variantes'])) {
-                        foreach ($_POST['variantes'] as $id_variante => $datos) {
-                            $id_variante = (int) $id_variante;
-                            // Verificar propiedad de la variante
-                            $stmt_check_var = $this->conn->prepare("SELECT 1 FROM variantes_producto vp JOIN productos p ON vp.id_producto = p.id_producto WHERE vp.id_variante = ? AND p.id_vendedor = ?");
-                            $stmt_check_var->bind_param("ii", $id_variante, $id_vendedor);
-                            $stmt_check_var->execute();
-                            if ($stmt_check_var->get_result()->num_rows === 0) {
-                                $stmt_check_var->close();
-                                throw new Exception("Permiso denegado variante $id_variante.");
-                            }
-                            $stmt_check_var->close();
-
-                            if (isset($datos['desactivar'])) {
-                                $stmt_desactivar->bind_param("ii", $id_variante, $id_producto);
-                                $stmt_desactivar->execute();
-                            } else {
-                                $precio = filter_var($datos['precio'], FILTER_VALIDATE_FLOAT);
-                                $stock = filter_var($datos['stock'], FILTER_VALIDATE_INT);
-                                if ($precio === false || $stock === false || $precio <= 0 || $stock < 0) {
-                                    throw new Exception("Datos inválidos variante $id_variante.");
-                                }
-                                $stmt_update->bind_param("diii", $precio, $stock, $id_variante, $id_producto);
-                                $stmt_update->execute();
-                            }
-                        }
-                    }
+                    $this->procesarActualizacionVariantesVendedor($id_producto, $id_vendedor);
                     $mensaje_exito = "Lista de variantes actualizada.";
-                    $stmt_update->close();
-                    $stmt_desactivar->close();
                 }
 
                 // --- REACTIVAR VARIANTE ---
                 if (isset($_GET['reactivar_variante_id'])) {
                     $id_variante_reactivar = (int) $_GET['reactivar_variante_id'];
                     $resultado = $this->cambiarEstadoVariante($id_producto, $id_variante_reactivar, 'activo');
-                    if ($resultado['success']) {
-                        $mensaje_exito = $resultado['mensaje'];
-                    } else {
-                        throw new Exception($resultado['mensaje']);
-                    }
+                    if (!$resultado['success']) throw new Exception($resultado['mensaje']);
+                    $mensaje_exito = $resultado['mensaje'];
                 }
 
                 $this->conn->commit();
@@ -674,6 +850,19 @@ class VendedorController
         ];
     }
 
+    /**
+     * Recupera los datos de perfil del vendedor autenticado para la vista mi_perfil_vendedor.
+     * Hace JOIN entre usuarios (email) y perfiles (nombres, apellidos, teléfono).
+     * Filtra por id_rol = 2 (vendedor) para evitar que un admin con id en sesión acceda.
+     * Si el fetch devuelve vacío (cuenta eliminada con sesión activa), destruye la sesión
+     * y redirige al login antes de retornar.
+     *
+     * Nota: El nombre del método es 'actualizarPerfil' aunque actualmente solo hace GET.
+     * El POST de actualización de datos del perfil está pendiente de implementación.
+     *
+     * @return array{datos_perfil: array{nombre: string, apellido: string, email: string, telefono: string},
+     *               mensaje_error: string, mensaje_exito: string, base_url: string}
+     */
     public function actualizarPerfil()
     {
         $id_vendedor = $_SESSION['usuario_id'];
@@ -712,22 +901,37 @@ class VendedorController
         ];
     }
 
+    /**
+     * Método de compatibilidad para la ruta vendedor_ventas.
+     * Este método solo provee las variables de sesión y URL base; la consulta real
+     * de ítems vendidos la realiza VentasController::listarVentasCompletadas() llamado
+     * directamente desde el router. Se mantiene para el patrón uniform de la arquitectura.
+     *
+     * @return array{ventas: array, base_url: string, nombre_vendedor: string}
+     */
     public function listarVentas()
     {
-        // De momento devolvemos estructura vacía para la vista
         return [
-            'ventas' => [],
-            'base_url' => $this->base_url,
-            'nombre_vendedor' => $_SESSION['usuario'] ?? ''
+            'ventas'          => [],
+            'base_url'        => $this->base_url,
+            'nombre_vendedor' => $_SESSION['usuario'] ?? '',
         ];
     }
 
+    /**
+     * Método de compatibilidad para la ruta vendedor_envios.
+     * Este método solo provee las variables de sesión y URL base; las consultas reales
+     * de envíos pendientes y empresas las realiza EnviosController llamado desde el router.
+     * Se mantiene para el patrón uniforme de la arquitectura del panel de vendedor.
+     *
+     * @return array{envios: array, base_url: string, nombre_vendedor: string}
+     */
     public function listarEnvios()
     {
         return [
-            'envios' => [],
-            'base_url' => $this->base_url,
-            'nombre_vendedor' => $_SESSION['usuario'] ?? ''
+            'envios'          => [],
+            'base_url'        => $this->base_url,
+            'nombre_vendedor' => $_SESSION['usuario'] ?? '',
         ];
     }
 }

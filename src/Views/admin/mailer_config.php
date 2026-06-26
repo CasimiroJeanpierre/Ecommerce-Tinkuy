@@ -1,4 +1,29 @@
 <?php
+/**
+ * Configuración centralizada del servicio de correo electrónico (PHPMailer).
+ * Define las constantes de conexión SMTP para el proveedor de correo seleccionado
+ * y construye la función crearMailer() que devuelve una instancia configurada.
+ *
+ * Proveedor activo (constante MAIL_PROVIDER):
+ *   'gmail'            — SMTP smtp.gmail.com:587 con TLS (requiere App Password)
+ *   'office365'        — SMTP smtp.office365.com:587 con STARTTLS
+ *   'outlook'          — Alias de office365
+ *   'sendgrid'         — API SMTP smtp.sendgrid.net:587
+ *   'mailtrap_live'    — Para staging con Mailtrap Live
+ *   'mailtrap_sandbox' — Para desarrollo con Mailtrap Sandbox (sin entregar)
+ *
+ * Constantes definidas:
+ *   MAIL_PROVIDER    — Selector de proveedor activo
+ *   MAIL_FROM_NAME   — Nombre del remitente mostrado al destinatario
+ *   MAIL_DEBUG       — Nivel de debug PHPMailer (0=off, 2=verbose)
+ *   BASE_URL         — URL base del proyecto (fallback si no está definida)
+ *
+ * Uso:
+ *   require BASE_PATH . '/src/Views/admin/mailer_config.php';
+ *   $mail = crearMailer();
+ *   $mail->addAddress($email); $mail->Subject = '...'; $mail->Body = '...';
+ *   $mail->send();
+ */
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
@@ -132,74 +157,82 @@ function build_authentication_hint($provider)
     return $hint;
 }
 
+/** Activa el debug de PHPMailer si MAIL_DEBUG está habilitado. */
+function configurarDebugMailer(PHPMailer $mail, string $tag = ''): void
+{
+    if (!MAIL_DEBUG) return;
+    $mail->SMTPDebug = MAIL_DEBUG;
+    $mail->Debugoutput = function ($str, $level) use ($tag) {
+        error_log("[PHPMailer]{$tag}[level $level] $str");
+    };
+}
+
+/**
+ * Intenta enviar el correo usando el host SMTP alternativo.
+ * Devuelve ['success' => bool, 'error' => string|null].
+ */
+function enviarViaFallback(array $cfg, string $to, string $subject, string $body_html, string $body_text): array
+{
+    try {
+        $mail = new PHPMailer(true);
+        $mail->isSMTP();
+        $mail->Host       = $cfg['alt_host'];
+        $mail->SMTPAuth   = $cfg['auth'];
+        $mail->Username   = $cfg['username'];
+        $mail->Password   = $cfg['password'];
+        $mail->SMTPSecure = $cfg['secure'];
+        $mail->Port       = $cfg['port'];
+        configurarDebugMailer($mail, '[ALT]');
+        $mail->setFrom($cfg['from'], $cfg['from_name']);
+        $mail->addAddress($to);
+        $mail->isHTML(true);
+        $mail->Subject = $subject;
+        $mail->Body    = $body_html;
+        $mail->AltBody = $body_text ?: strip_tags($body_html);
+        $mail->send();
+        return ['success' => true, 'error' => null];
+    } catch (Exception $e2) {
+        return ['success' => false, 'error' => $e2->getMessage() ?: 'unknown'];
+    }
+}
+
 function send_mail($to, $subject, $body_html, $body_text = '')
 {
-    $cfg = get_smtp_config();
+    $cfg  = get_smtp_config();
     $mail = new PHPMailer(true);
 
     try {
         // Configuración del servidor SMTP
         $mail->isSMTP();
-        $mail->Host = $cfg['host'];
-        $mail->SMTPAuth = $cfg['auth'];
-        $mail->Username = $cfg['username'];
-        $mail->Password = $cfg['password'];
+        $mail->Host       = $cfg['host'];
+        $mail->SMTPAuth   = $cfg['auth'];
+        $mail->Username   = $cfg['username'];
+        $mail->Password   = $cfg['password'];
         $mail->SMTPSecure = $cfg['secure'];
-        $mail->Port = $cfg['port'];
+        $mail->Port       = $cfg['port'];
 
-        // Debug opcional
-        if (MAIL_DEBUG) {
-            $mail->SMTPDebug = MAIL_DEBUG; // 2 recomendado para ver el handshake
-            $mail->Debugoutput = function ($str, $level) {
-                error_log("[PHPMailer][level $level] $str");
-            };
-        }
+        configurarDebugMailer($mail);
 
-        // Configuración del remitente y destinatario
         $mail->setFrom($cfg['from'], $cfg['from_name']);
         $mail->addAddress($to);
-
-        // Contenido del correo
         $mail->isHTML(true);
         $mail->Subject = $subject;
-        $mail->Body = $body_html;
+        $mail->Body    = $body_html;
         $mail->AltBody = $body_text ?: strip_tags($body_html);
 
-        // Enviar correo
         $mail->send();
         return true;
     } catch (Exception $e) {
         // Fallback automático si falla autenticación y hay host alternativo
-        $error = $mail->ErrorInfo ?? '';
+        $error        = $mail->ErrorInfo ?? '';
         $triedFallback = false;
         if (stripos($error, 'Could not authenticate') !== false && !empty($cfg['alt_host'])) {
-            try {
-                $triedFallback = true;
-                $mail = new PHPMailer(true);
-                $mail->isSMTP();
-                $mail->Host = $cfg['alt_host'];
-                $mail->SMTPAuth = $cfg['auth'];
-                $mail->Username = $cfg['username'];
-                $mail->Password = $cfg['password'];
-                $mail->SMTPSecure = $cfg['secure'];
-                $mail->Port = $cfg['port'];
-                if (MAIL_DEBUG) {
-                    $mail->SMTPDebug = MAIL_DEBUG;
-                    $mail->Debugoutput = function ($str, $level) {
-                        error_log("[PHPMailer][ALT level $level] $str");
-                    };
-                }
-                $mail->setFrom($cfg['from'], $cfg['from_name']);
-                $mail->addAddress($to);
-                $mail->isHTML(true);
-                $mail->Subject = $subject;
-                $mail->Body = $body_html;
-                $mail->AltBody = $body_text ?: strip_tags($body_html);
-                $mail->send();
+            $triedFallback = true;
+            $resultado     = enviarViaFallback($cfg, $to, $subject, $body_html, $body_text);
+            if ($resultado['success']) {
                 return true;
-            } catch (Exception $e2) {
-                $error .= " | Fallback error: " . ($e2->getMessage() ?: 'unknown');
             }
+            $error .= " | Fallback error: " . $resultado['error'];
         }
         // Agregar guía si es error típico de autenticación
         if (stripos($error, 'Could not authenticate') !== false) {

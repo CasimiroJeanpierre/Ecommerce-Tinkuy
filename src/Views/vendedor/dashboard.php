@@ -1,4 +1,22 @@
 <?php
+/**
+ * Vista del dashboard principal del panel del vendedor.
+ * Muestra métricas propias del vendedor: productos, stock, ventas y envíos pendientes,
+ * junto con un gráfico de ventas semanal y el ranking de los 5 productos más vendidos.
+ *
+ * Variables esperadas (preparadas por VendedorDashboardController o VendedorController):
+ *   $id_vendedor          (int)           - ID del vendedor autenticado (desde $_SESSION)
+ *   $nombre_vendedor      (string)        - Nombre del vendedor autenticado
+ *   $envios_pendientes    (int)           - Artículos en estado 'Procesando' (pendientes de envío)
+ *   $total_productos      (int)           - Productos activos del vendedor
+ *   $total_stock          (int)           - Unidades totales en stock activo sumadas por variante
+ *   $total_ventas         (int)           - Artículos vendidos (estados enviado/entregado)
+ *   $json_labels          (string)        - JSON array con etiquetas de días (últimos 7 días)
+ *   $json_data            (string)        - JSON array con ingresos diarios para Chart.js
+ *   $top_5_productos      (mysqli_result) - Los 5 productos más vendidos del vendedor
+ *   $productos_sin_ventas (mysqli_result) - Productos activos del vendedor sin ninguna venta
+ *   $base_url             (string)        - URL base del proyecto
+ */
 // Vista del dashboard del vendedor (MVC)
 // Si el controlador no ha preparado las variables (por ejemplo cuando la vista
 // se abre directamente), lo incluimos como fallback.

@@ -1,4 +1,12 @@
 <?php
+/**
+ * Vista del carrito de compras (versión legacy/estática).
+ * Lee el carrito directamente desde $_SESSION['carrito'] sin pasar por un controlador.
+ * Utiliza rutas relativas a archivos del sistema antiguo (assets/, eliminar_carrito.php).
+ *
+ * @deprecated Versión anterior al patrón MVC; la vista actual es src/Views/pedido/cart.php
+ *             gestionada desde el router en public/index.php (case 'cart').
+ */
 session_start();
 include 'db.php';
 

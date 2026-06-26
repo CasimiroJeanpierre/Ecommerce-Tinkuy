@@ -1,4 +1,19 @@
 <?php
+/**
+ * Vista de detalle de un pedido del cliente autenticado.
+ * Muestra la cabecera del pedido (fecha, estado, dirección de envío, total) y
+ * todas las líneas de detalle con imagen, nombre, variante y precio histórico.
+ * El pedido se obtiene verificando que pertenezca al usuario en sesión (anti-IDOR).
+ *
+ * Variables definidas por OrderController::getOrderDetails() antes de renderizar:
+ *   $pedido         (array)  - Datos del pedido: id_pedido, fecha_pedido, total_pedido,
+ *                               nombre_estado, email, nombres, apellidos,
+ *                               direccion, ciudad, codigo_postal
+ *   $detalles       (array)  - Líneas del pedido: nombre_producto, talla, color,
+ *                               cantidad, precio_unitario, imagen_url
+ *   $base_url       (string) - URL base del proyecto
+ *   $mensaje_error  (string) - Error si el pedido no existe o no pertenece al usuario
+ */
 require_once BASE_PATH . '/src/Core/db.php';
 require_once BASE_PATH . '/src/Controllers/OrderController.php';
 

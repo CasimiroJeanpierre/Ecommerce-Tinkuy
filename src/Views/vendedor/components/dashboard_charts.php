@@ -1,4 +1,14 @@
 <?php
+/**
+ * Componente de gráficos del dashboard del vendedor.
+ * Renderiza un gráfico de líneas Chart.js mostrando la evolución de ingresos
+ * de los últimos 7 días. Los datos se inyectan como JSON en variables JavaScript
+ * para ser consumidos por Chart.js sin llamadas AJAX adicionales.
+ *
+ * Variables esperadas desde el scope del dashboard (src/Views/vendedor/dashboard.php):
+ *   $json_labels (string) - JSON array de etiquetas de fecha para el eje X (p.ej. ["19/6","20/6",...])
+ *   $json_data   (string) - JSON array de totales de ventas diarias para el eje Y (float[])
+ */
 // Vista parcial para los gráficos del dashboard vendedor
 ?>
 <div class="row mb-4">

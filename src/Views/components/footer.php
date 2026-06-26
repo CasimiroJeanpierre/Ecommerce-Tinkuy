@@ -1,3 +1,12 @@
+<?php
+/**
+ * Componente de pie de página global de la tienda Tinkuy.
+ * Contiene el nombre de la marca, eslogan y enlaces a redes sociales.
+ * Es un componente estático: no requiere variables del scope de inclusión
+ * ni consultas a la base de datos. Se incluye en todas las vistas públicas
+ * al final del body, justo antes de los scripts de Bootstrap.
+ */
+?>
 <footer class="bg-dark text-white mt-auto pt-4 pb-3">
     <div class="container">
         <div class="row">

@@ -1,4 +1,22 @@
-<?php $project_root = defined('PROJECT_ROOT') ? PROJECT_ROOT : '/Ecommerce-Tinkuy'; ?>
+<?php
+/**
+ * Vista de listado y gestión de productos (panel de administración).
+ * Muestra todos los productos del sistema con filtros por categoría y estado.
+ * El admin puede acceder al detalle/edición de cualquier producto independientemente
+ * del vendedor propietario, y activar/desactivar productos desde la lista.
+ *
+ * Variables esperadas (provistas por AdminProductosController::listar()):
+ *   $productos      (array)  - Lista de productos:
+ *                               id_producto, nombre_producto, precio_base, stock_total,
+ *                               estado, nombre_vendedor, nombre_categoria, imagen_principal
+ *   $categorias     (array)  - Lista de categorías: [id_categoria, nombre_categoria]
+ *                               para poblar el select de filtro
+ *   $nombre_admin   (string) - Nombre del administrador autenticado (desde $_SESSION)
+ *   $base_url       (string) - URL base del proyecto para construir los enlaces
+ *   $filtro_cat     (int)    - ID de categoría activa como filtro (0 = todas)
+ *   $filtro_estado  (string) - Estado activo como filtro ('activo'|'inactivo'|'' = todos)
+ */
+$project_root = defined('PROJECT_ROOT') ? PROJECT_ROOT : '/Ecommerce-Tinkuy'; ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>

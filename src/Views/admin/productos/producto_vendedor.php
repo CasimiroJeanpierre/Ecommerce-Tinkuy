@@ -1,4 +1,12 @@
 <?php
+/**
+ * Vista de listado de productos del vendedor (versión legacy/estática).
+ * Acceso directo a BD mediante include 'db.php' — no usa el patrón MVC.
+ * Requiere $_SESSION['id'] (clave de sesión del sistema legacy, distinta de la actual 'usuario_id').
+ *
+ * @deprecated Este archivo es una vista del sistema anterior; la versión actual es
+ *             src/Views/vendedor/productos/productos.php gestionada por VendedorController.
+ */
 session_start();
 if (!isset($_SESSION['id'])) {
     header("Location: login.php");

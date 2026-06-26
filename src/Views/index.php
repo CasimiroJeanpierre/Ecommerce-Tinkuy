@@ -1,4 +1,15 @@
 <?php
+/**
+ * Vista de la página principal (home) de la tienda Tinkuy.
+ * Muestra el hero banner, una vitrina con los productos destacados más recientes,
+ * secciones de categorías y llamadas a la acción (CTA) hacia el catálogo.
+ *
+ * Variables esperadas (preparadas por public/index.php case 'index'):
+ *   $productos_destacados (array)  - Hasta 3 productos activos con stock:
+ *                                     id_producto, nombre_producto, imagen_principal,
+ *                                     precio_min, nombre_categoria
+ *   $base_url             (string) - URL base del proyecto para enlaces y assets
+ */
 // src/Views/index.php
 // Esta Vista espera que la variable $productos_destacados ya exista.
 

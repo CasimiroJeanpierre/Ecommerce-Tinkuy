@@ -1,4 +1,16 @@
 <?php
+/**
+ * Vista del historial de pedidos del cliente autenticado.
+ * Muestra todos los pedidos realizados por el usuario, ordenados por fecha
+ * descendente, con acceso al detalle de cada uno.
+ * Redirige al login si el usuario no está autenticado.
+ *
+ * Variables definidas por OrderController::getUserOrders() antes de renderizar:
+ *   $pedidos        (array)  - Lista de pedidos del usuario:
+ *                               id_pedido, fecha_pedido, total_pedido, nombre_estado
+ *   $base_url       (string) - URL base del proyecto
+ *   $mensaje_error  (string) - Mensaje de error si la consulta a BD falla
+ */
 require_once BASE_PATH . '/src/Core/db.php';
 require_once BASE_PATH . '/src/Controllers/OrderController.php';
 

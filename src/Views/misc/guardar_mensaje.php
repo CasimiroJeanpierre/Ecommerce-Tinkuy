@@ -1,10 +1,26 @@
 <?php
+/**
+ * Controlador procedural de guardado de mensajes de contacto (ruta legacy).
+ * Recibe los datos del formulario de contacto por POST e inserta el mensaje
+ * en la tabla 'mensajes_contacto' de la base de datos 'tinkuy_db'.
+ * Usa prepared statements para prevenir inyección SQL.
+ *
+ * Flujo:
+ *   1. Verifica que la petición sea POST; si no, redirige a index.php
+ *   2. Recibe y sanitiza nombre, correo y mensaje de $_POST
+ *   3. Prepara e inserta el mensaje en mensajes_contacto
+ *   4. Redirige a contacto.php con parámetro status=success o status=error_*
+ *
+ * @deprecated Usar la ruta ?page=contact del router MVC (public/index.php)
+ *             con la clase Mensaje::guardarMensaje() y validación completa vía validarContacto().
+ *             Este archivo usa una conexión directa legacy y no valida los datos del formulario.
+ */
 /*
  * ========================================
  * GUARDAR_MENSAJE.PHP
  * ========================================
  * Este archivo recibe los datos del formulario de contacto
- * y los inserta en la base de datos 'tinkuy_db', 
+ * y los inserta en la base de datos 'tinkuy_db',
  * en la tabla 'mensajes_contacto'.
  */
 
@@ -42,30 +58,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Preparamos la consulta para evitar inyección SQL
     $stmt = $conexion->prepare($sql);
 
-    if ($stmt) {
-        // --- PASO 5: Vincular los datos (parámetros) ---
-        // "sss" significa que las 3 variables son Strings (texto)
-        $stmt->bind_param("sss", $nombre, $correo, $mensaje);
-
-        // --- PASO 6: Ejecutar la consulta ---
-        if ($stmt->execute()) {
-            // ¡Éxito! El mensaje se guardó.
-            // Redirigimos al usuario de vuelta a la página de contacto
-            // con un mensaje de éxito.
-            header("Location: contacto.php?status=success");
-            exit;
-        } else {
-            // Error al ejecutar.
-            // Redirigimos con un mensaje de error.
-            header("Location: contacto.php?status=error_ejecucion");
-            exit;
-        }
-
-    } else {
-        // Error al preparar la consulta (ej. error de sintaxis SQL).
+    if (!$stmt) {
         header("Location: contacto.php?status=error_sql");
         exit;
     }
+    $stmt->bind_param("sss", $nombre, $correo, $mensaje);
+    if (!$stmt->execute()) {
+        header("Location: contacto.php?status=error_ejecucion");
+        exit;
+    }
+    header("Location: contacto.php?status=success");
+    exit;
 
 } else {
     // Si alguien intenta acceder a este archivo escribiendo la URL

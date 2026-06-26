@@ -1,4 +1,23 @@
-<?php $project_root = defined('PROJECT_ROOT') ? PROJECT_ROOT : '/Ecommerce-Tinkuy'; ?>
+<?php
+/**
+ * Vista de edición de producto (panel de administración).
+ * Permite modificar todos los campos del producto: nombre, descripción, categoría,
+ * imagen principal, imágenes adicionales, variantes y estado.
+ * El admin puede editar cualquier producto del sistema sin restricción de vendedor.
+ *
+ * Variables esperadas (provistas por AdminProductosController::editar()):
+ *   $producto        (array)  - Datos actuales del producto:
+ *                                id_producto, nombre_producto, descripcion, precio_base,
+ *                                id_categoria, imagen_principal, estado, id_vendedor
+ *   $categorias      (array)  - Lista de categorías: [id_categoria, nombre_categoria]
+ *   $variantes       (array)  - Variantes activas: [id_variante, talla, color, precio, stock, estado]
+ *   $imagenes        (array)  - Imágenes adicionales: [id_imagen, ruta_imagen]
+ *   $nombre_admin    (string) - Nombre del administrador autenticado (desde $_SESSION)
+ *   $base_url        (string) - URL base del proyecto
+ *   $mensaje_error   (string) - Mensaje de error tras operación fallida (subida, validación, BD)
+ *   $mensaje_exito   (string) - Mensaje de confirmación tras operación exitosa
+ */
+$project_root = defined('PROJECT_ROOT') ? PROJECT_ROOT : '/Ecommerce-Tinkuy'; ?>
 <!DOCTYPE html>
 <html lang="es">
 

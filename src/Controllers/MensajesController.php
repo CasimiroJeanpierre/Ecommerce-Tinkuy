@@ -3,14 +3,31 @@
 require_once BASE_PATH . '/src/Models/Mensaje.php';
 
 /**
- * Controlador de Mensajes de Contacto (Admin)
- * Gestiona la visualización y administración de mensajes recibidos
+ * Controlador de mensajes de contacto del panel de administración.
+ * Gestiona la visualización, filtrado y cambio de estado de los mensajes
+ * enviados desde el formulario público de contacto.
+ *
+ * Métodos disponibles:
+ *   listar()     — Lista mensajes con filtro por estado; despacha acciones GET
+ *   ver($id)     — Detalle de un mensaje; marca automáticamente como leído (leido=1)
+ *
+ * Acciones GET procesadas en listar():
+ *   marcar_respondido=N → estado='respondido', leido=1
+ *   archivar=N          → estado='archivado'
+ *   eliminar=N          → DELETE permanente del mensaje
+ *
+ * Uso desde el router (public/index.php):
+ *   $ctrl = new MensajesController($conn);
+ *   extract($ctrl->listar()); include VIEW_PATH . '/admin/mensajes/mensajes.php';
  */
 class MensajesController
 {
     private $conn;
     private $modeloMensaje;
 
+    /**
+     * @param mysqli $conn Conexión activa a la base de datos
+     */
     public function __construct($conn)
     {
         $this->conn = $conn;
@@ -18,7 +35,10 @@ class MensajesController
     }
 
     /**
-     * Listar todos los mensajes
+     * Lista todos los mensajes con filtro opcional por estado.
+     * Despacha acciones GET (marcar, archivar, eliminar) antes de listar.
+     *
+     * @return array{mensajes: array, estadisticas: array, filtro_estado: string, nombre_admin: string, base_url: string}
      */
     public function listar()
     {
@@ -57,7 +77,11 @@ class MensajesController
     }
 
     /**
-     * Ver detalle de un mensaje
+     * Muestra el detalle de un mensaje y lo marca como leído automáticamente.
+     * Redirige a admin_mensajes si el ID no existe.
+     *
+     * @param int $id_mensaje ID del mensaje a visualizar
+     * @return array{mensaje: array, nombre_admin: string, base_url: string}
      */
     public function ver($id_mensaje)
     {
@@ -99,7 +123,10 @@ class MensajesController
     }
 
     /**
-     * Procesar acciones (marcar, eliminar, cambiar estado)
+     * Despacha acciones GET sobre un mensaje: marcar_respondido, marcar_pendiente,
+     * archivar y eliminar. Redirige tras cada acción.
+     *
+     * @return void
      */
     private function procesarAcciones()
     {

@@ -1,3 +1,24 @@
+<?php
+/**
+ * Vista de detalle de un mensaje de contacto (panel de administración).
+ * Muestra el contenido completo del mensaje y permite marcar como respondido,
+ * archivar o eliminar el mensaje desde esta misma vista.
+ * Al cargar la página, el mensaje se marca automáticamente como leído (leido=1).
+ *
+ * Variables esperadas (provistas por MensajesController::ver()):
+ *   $mensaje      (array)  - Fila completa del mensaje:
+ *                             id_mensaje, nombre, email, asunto, mensaje (texto libre),
+ *                             fecha_envio, estado ('pendiente'|'respondido'|'archivado'),
+ *                             leido (0|1)
+ *   $nombre_admin (string) - Nombre del administrador autenticado (desde $_SESSION)
+ *   $base_url     (string) - URL base del proyecto para construir los enlaces de acción
+ *
+ * Acciones disponibles (GET a ?page=admin_mensajes):
+ *   marcar_respondido=N  → Cambia el estado a 'respondido' y leido=1
+ *   archivar=N           → Cambia el estado a 'archivado'
+ *   eliminar=N           → Elimina el mensaje permanentemente
+ */
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>

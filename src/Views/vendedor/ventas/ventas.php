@@ -1,4 +1,17 @@
 <?php
+/**
+ * Vista del historial de ventas completadas del vendedor autenticado.
+ * Muestra únicamente los ítems de pedido con estado 'Enviado' (3) o 'Entregado' (4),
+ * junto con el total de ingresos acumulados. Los pedidos pendientes no aparecen aquí.
+ *
+ * Variables esperadas (provistas por VentasController):
+ *   $items_vendidos  (array)  - Ítems vendidos: id_pedido, fecha_pedido, nombre_producto,
+ *                                talla, color, cantidad, precio_historico, subtotal,
+ *                                id_estado_detalle, numero_seguimiento, nombre_empresa
+ *   $total_ingresos  (float)  - Suma acumulada de subtotales de todos los ítems
+ *   $nombre_vendedor (string) - Nombre del vendedor autenticado (desde $_SESSION)
+ *   $base_url        (string) - URL base del proyecto
+ */
 // Verificamos que haya un usuario logueado y sea vendedor
 $base_url = $base_url ?? (defined('BASE_URL') ? BASE_URL : '/Ecommerce-Tinkuy/public/index.php');
 if (!isset($_SESSION['usuario_id']) || $_SESSION['rol'] !== 'vendedor') {

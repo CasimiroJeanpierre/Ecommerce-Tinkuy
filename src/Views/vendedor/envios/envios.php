@@ -1,4 +1,20 @@
 <?php
+/**
+ * Vista de gestión de envíos del vendedor autenticado.
+ * Muestra los artículos de pedido con estado 'Procesando' que requieren ser enviados.
+ * El vendedor selecciona la empresa de envío, introduce el número de seguimiento
+ * y registra el envío, lo que cambia el estado del ítem a 'Enviado'.
+ *
+ * Variables esperadas (provistas por VendedorController o EnviosController):
+ *   $envios_pendientes (array)  - Ítems a enviar: id_detalle, id_pedido, nombre_producto,
+ *                                  talla, color, cantidad, nombre_comprador, email_comprador,
+ *                                  direccion_envio, ciudad, codigo_postal
+ *   $empresas_envio    (array)  - Empresas de logística: [id_empresa_envio, nombre_empresa]
+ *   $nombre_vendedor   (string) - Nombre del vendedor autenticado (desde $_SESSION)
+ *   $base_url          (string) - URL base del proyecto
+ *   $mensaje_error     (string) - Mensaje de error tras operación fallida
+ *   $mensaje_exito     (string) - Confirmación tras registrar un envío exitosamente
+ */
 // Verificamos que haya un usuario logueado y sea vendedor
 if (!isset($_SESSION['usuario_id']) || $_SESSION['rol'] !== 'vendedor') {
     header('Location: ' . $base_url . '?page=login');

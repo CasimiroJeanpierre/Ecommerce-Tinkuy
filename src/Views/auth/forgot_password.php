@@ -1,9 +1,85 @@
 <?php
+/**
+ * Vista y mini-controlador del formulario de recuperación de contraseña.
+ * El usuario introduce su email; si existe en BD, se genera un token UUID y se
+ * envía un correo con el enlace de restablecimiento (válido por 1 hora).
+ *
+ * Flujo en POST:
+ *   1. Verifica CSRF.
+ *   2. Valida formato del email.
+ *   3. Busca el email en BD (no revela si existe o no para evitar enumeración de usuarios).
+ *   4. Si existe: INSERT en tabla password_resets con token UUID y expiracion=now+3600s.
+ *   5. Envía email con enlace ?page=reset_password&token=UUID via PHPMailer (SMTP).
+ *
+ * Variables de scope:
+ *   $mensaje       (string) - Mensaje neutro de éxito o error (no revela si el email existe)
+ *   $tipo_mensaje  (string) - Tipo Bootstrap: 'success'|'danger'|'info'
+ *   $base_url      (string) - URL base del proyecto
+ *   $csrf_token    (string) - Token CSRF para proteger el formulario POST
+ */
 require_once BASE_PATH . '/src/Core/db.php';
 require_once BASE_PATH . '/src/Views/admin/mailer_config.php';
 
 $mensaje = '';
-$tipo_mensaje = 'info'; // Para cambiar el color del alert
+$tipo_mensaje = 'info';
+
+/**
+ * Guarda un token de recuperación en BD y envía el email con el enlace.
+ * Devuelve ['mensaje' => string, 'tipo' => string].
+ */
+function guardarTokenYEnviarEmail(string $email, $conn): array
+{
+    $token       = bin2hex(random_bytes(32));
+    $token_hash  = hash('sha256', $token);
+    $expiracion  = date('Y-m-d H:i:s', strtotime('+1 hour'));
+
+    try {
+        $conn->begin_transaction();
+
+        $del = $conn->prepare("DELETE FROM password_resets WHERE email = ?");
+        $del->bind_param("s", $email);
+        $del->execute();
+
+        $ins = $conn->prepare("INSERT INTO password_resets (email, token_hash, expiracion) VALUES (?, ?, ?)");
+        $ins->bind_param("sss", $email, $token_hash, $expiracion);
+        $ins->execute();
+
+        $conn->commit();
+    } catch (mysqli_sql_exception $e) {
+        $conn->rollback();
+        return ['mensaje' => "Ocurrió un error al procesar tu solicitud. Inténtalo de nuevo.", 'tipo' => 'danger'];
+    }
+
+    $protocol   = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+    $reset_link = $protocol . $_SERVER['HTTP_HOST'] . BASE_URL . "?page=reset_password&token=" . urlencode($token);
+    $asunto     = "Restablece tu contraseña | Tinkuy";
+    $body_html  = '
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><title>Restablecer Contraseña</title></head>
+<body style="font-family:Arial,sans-serif; background-color:#f4f4f4; padding:20px;">
+<div style="max-width:600px; margin:auto; background:#fff; padding:30px; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.1);">
+<h2 style="color:#0d6efd; text-align:center;">🔐 Restablecer Contraseña</h2>
+<p>Hola,</p>
+<p>Hemos recibido una solicitud para restablecer tu contraseña en <strong>Tinkuy</strong>.</p>
+<p>Haz clic en el botón de abajo para continuar:</p>
+<div style="text-align:center; margin:30px 0;">
+<a href="' . htmlspecialchars($reset_link) . '" style="display:inline-block; padding:12px 30px; background:#0d6efd; color:#fff; text-decoration:none; border-radius:5px; font-weight:bold;">Restablecer mi contraseña</a>
+</div>
+<p><small><strong>Nota:</strong> Este enlace expirará en <strong>1 hora</strong>.</small></p>
+<p>Si no solicitaste este cambio, ignora este correo.</p>
+<hr style="border:none; border-top:1px solid #ddd; margin:20px 0;">
+<p style="text-align:center; color:#888; font-size:12px;">© 2025 Tinkuy | Artesanías Peruanas</p>
+</div>
+</body>
+</html>';
+
+    $mail_ok    = send_mail($email, $asunto, $body_html);
+    $mensaje    = $mail_ok
+        ? "Se ha enviado un enlace de recuperación a tu correo (si está registrado)."
+        : "Hubo un problema al enviar el correo. Inténtalo más tarde.";
+    return ['mensaje' => $mensaje, 'tipo' => $mail_ok ? 'success' : 'danger'];
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = strip_tags(trim($_POST['email']));
@@ -25,76 +101,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute();
         $res = $stmt->get_result();
 
+        // Mensaje genérico por seguridad si el email no existe (ID 89)
+        $mensaje      = "Si existe una cuenta asociada a ese correo, recibirás un enlace.";
+        $tipo_mensaje = 'info';
         if ($res->num_rows === 1) {
-            // Generar token seguro
-            $token = bin2hex(random_bytes(32));
-            $token_hash = hash('sha256', $token);
-            $expiracion = date('Y-m-d H:i:s', strtotime('+1 hour')); // Expiración en 1 hora
-
-            try {
-                $conn->begin_transaction();
-
-                // Borrar tokens anteriores para ese email
-                $del = $conn->prepare("DELETE FROM password_resets WHERE email = ?");
-                $del->bind_param("s", $email);
-                $del->execute();
-
-                // Guardar nuevo token hash en BD
-                $insert = $conn->prepare("INSERT INTO password_resets (email, token_hash, expiracion) VALUES (?, ?, ?)");
-                $insert->bind_param("sss", $email, $token_hash, $expiracion);
-                $insert->execute();
-
-                $conn->commit(); // Confirmar transacción solo si todo va bien
-
-                // Enlace de recuperación (token original, no hash)
-                $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
-                $domain = $_SERVER['HTTP_HOST'];
-                $reset_link = $protocol . $domain . BASE_URL . "?page=reset_password&token=" . urlencode($token);
-                $asunto = "Restablece tu contraseña | Tinkuy";
-
-                $body_html = '
-<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="UTF-8"><title>Restablecer Contraseña</title></head>
-<body style="font-family:Arial,sans-serif; background-color:#f4f4f4; padding:20px;">
-<div style="max-width:600px; margin:auto; background:#fff; padding:30px; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.1);">
-<h2 style="color:#0d6efd; text-align:center;">🔐 Restablecer Contraseña</h2>
-<p>Hola,</p>
-<p>Hemos recibido una solicitud para restablecer tu contraseña en <strong>Tinkuy</strong>.</p>
-<p>Haz clic en el botón de abajo para continuar:</p>
-<div style="text-align:center; margin:30px 0;">
-<a href="' . htmlspecialchars($reset_link) . '" style="display:inline-block; padding:12px 30px; background:#0d6efd; color:#fff; text-decoration:none; border-radius:5px; font-weight:bold;">Restablecer mi contraseña</a>
-</div>
-<p><small><strong>Nota:</strong> Este enlace expirará en <strong>1 hora</strong>.</small></p>
-<p>Si no solicitaste este cambio, ignora este correo.</p>
-<hr style="border:none; border-top:1px solid #ddd; margin:20px 0;">
-<p style="text-align:center; color:#888; font-size:12px;">© 2025 Tinkuy | Artesanías Peruanas</p>
-</div>
-</body>
-</html>';
-
-                // Intentar enviar el correo
-                if (send_mail($email, $asunto, $body_html)) {
-                    $mensaje = "Se ha enviado un enlace de recuperación a tu correo (si está registrado).";
-                    $tipo_mensaje = 'success'; // Cambiamos a success para el mensaje principal
-                } else {
-                    // Error de envío (puede ser configuración SMTP, etc.)
-                    $mensaje = "Hubo un problema al enviar el correo. Inténtalo más tarde.";
-                    // Aquí podrías loggear el error real para ti: error_log("Mailer Error: " . $mail->ErrorInfo);
-                    $tipo_mensaje = 'danger';
-                }
-
-            } catch (mysqli_sql_exception $e) {
-                $conn->rollback();
-                $mensaje = "Ocurrió un error al procesar tu solicitud. Inténtalo de nuevo.";
-                // Loggear el error real: error_log("DB Error en forgot_password: " . $e->getMessage());
-                $tipo_mensaje = 'danger';
-            }
-
-        } else {
-            // Email no encontrado - Mensaje genérico por seguridad (ID 89)
-            $mensaje = "Si existe una cuenta asociada a ese correo, recibirás un enlace.";
-            $tipo_mensaje = 'info';
+            $resultado    = guardarTokenYEnviarEmail($email, $conn);
+            $mensaje      = $resultado['mensaje'];
+            $tipo_mensaje = $resultado['tipo'];
         }
         $stmt->close();
     }

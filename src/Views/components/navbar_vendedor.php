@@ -1,4 +1,15 @@
 <?php
+/**
+ * Componente de barra de navegación superior del panel de vendedor (estilo oscuro).
+ * Incluye el logotipo de la tienda del vendedor, enlaces al dashboard, productos,
+ * ventas, envíos y perfil, y el indicador de envíos pendientes en el badge.
+ * Se usa como alternativa al sidebar en vistas con diseño de barra horizontal.
+ *
+ * Variables esperadas desde el scope de inclusión:
+ *   $nombre_vendedor   (string) - Nombre del vendedor autenticado (fallback a $_SESSION['usuario'])
+ *   $envios_pendientes (int)    - Número de ítems pendientes de envío (para el badge)
+ *   $base_url          (string) - URL base del proyecto para construir los href
+ */
 // Si el controlador no ha preparado las variables necesarias
 if (!isset($nombre_vendedor)) {
     $nombre_vendedor = $_SESSION['usuario'] ?? 'Usuario';

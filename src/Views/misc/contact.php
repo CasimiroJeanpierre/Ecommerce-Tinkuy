@@ -1,4 +1,19 @@
 <?php
+/**
+ * Vista del formulario de contacto público de Tinkuy.
+ * Permite a cualquier usuario (autenticado o no) enviar un mensaje al equipo.
+ * En POST, public/index.php llama a validarContacto() y si es válido inserta
+ * el mensaje en la tabla mensajes con estado 'pendiente'. El admin lo ve en admin_mensajes.
+ *
+ * Variables esperadas (preparadas por public/index.php case 'contact'):
+ *   $mensaje_error (string) - Error de validación: campo vacío, email inválido, etc.
+ *   $mensaje_exito (string) - Confirmación de mensaje guardado y enviado al admin
+ *   $nombre        (string) - Valor previo del campo nombre (para repoblar tras error)
+ *   $email         (string) - Valor previo del campo email
+ *   $asunto        (string) - Valor previo del campo asunto
+ *   $mensaje_txt   (string) - Valor previo del campo mensaje (texto libre)
+ *   $base_url      (string) - URL base del proyecto
+ */
 // src/Views/contact.php
 // Esta Vista espera que $mensaje_error, $mensaje_exito, $nombre, $email, $asunto, y $mensaje
 // ya existan (porque el Controlador 'public/index.php' ya los definió).

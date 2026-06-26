@@ -1,4 +1,15 @@
 <?php
+/**
+ * Vista del formulario de inicio de sesión con autenticación en dos fases (2FA).
+ * Al enviar el formulario, AuthController valida CSRF, reCAPTCHA, políticas de privacidad,
+ * rate limiting, credenciales y redirige a verify_2fa si todo es correcto.
+ *
+ * Variables definidas por AuthController antes de renderizar:
+ *   $mensaje_error (string) - Error de credenciales, cuenta inactiva o bloqueo por rate limiting
+ *   $mensaje_exito (string) - Mensaje de confirmación (ej. "Registro exitoso, inicia sesión")
+ *   $csrf_token    (string) - Token CSRF para proteger el formulario POST
+ *   $base_url      (string) - URL base del proyecto (para los enlaces de registro y recuperación)
+ */
 // Controlador ejecuta la lógica de login y define: $mensaje_error, $mensaje_exito, $csrf_token
 require_once __DIR__ . '/../../Controllers/AuthController.php';
 ?>

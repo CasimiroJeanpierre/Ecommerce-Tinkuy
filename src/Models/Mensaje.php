@@ -1,10 +1,32 @@
 <?php
-// src/Models/Mensaje.php
 
+/**
+ * Modelo de mensajes de contacto.
+ * Gestiona la persistencia de los mensajes enviados desde el formulario público
+ * de contacto en la tabla 'mensajes_contacto'.
+ *
+ * Métodos disponibles:
+ *   guardarMensaje($conn, $nombre, $email, $asunto, $mensaje) — INSERT en mensajes_contacto
+ *   getMensajes($conn, $filtro)   — Lista mensajes con filtro opcional por estado
+ *   getMensaje($conn, $id)        — Detalle de un mensaje específico
+ *   cambiarEstado($conn, $id, $estado) — Actualiza el campo 'estado' del mensaje
+ *   marcarLeido($conn, $id)       — Actualiza leido=1 del mensaje
+ *   eliminar($conn, $id)          — DELETE permanente del mensaje
+ *
+ * Nota: tieneColumnaEstado() verifica dinámicamente la existencia del campo
+ * para compatibilidad con instalaciones antiguas sin ese campo en la tabla.
+ */
 class Mensaje
 {
     /**
-     * Verifica si la tabla mensajes_contacto tiene la columna 'estado'.
+     * Verifica dinámicamente si la tabla mensajes_contacto tiene la columna 'estado'.
+     * Necesario para retrocompatibilidad con instalaciones anteriores a la migración que
+     * añadió el campo de estado al esquema. Usa SHOW COLUMNS FROM para inspeccionar la BD.
+     * Si la consulta falla por cualquier motivo (permisos insuficientes, tabla inexistente),
+     * captura la excepción y retorna false para activar la ruta de fallback.
+     *
+     * @param mysqli $conn Conexión activa a la base de datos
+     * @return bool true si la columna 'estado' existe en mensajes_contacto; false en caso contrario
      */
     private function tieneColumnaEstado($conn)
     {
@@ -16,14 +38,19 @@ class Mensaje
         }
     }
     /**
-     * Guarda un nuevo mensaje de contacto en la base de datos.
+     * Inserta un nuevo mensaje de contacto en la tabla mensajes_contacto.
+     * Todos los campos se insertan con sentencia preparada para prevenir inyección SQL.
+     * La fecha de envío la asigna MySQL automáticamente via DEFAULT CURRENT_TIMESTAMP
+     * — no se pasa como parámetro para evitar discrepancias con el reloj del servidor PHP.
+     * Si la inserción falla (ej. tabla inexistente, constraint violation), captura la excepción
+     * y retorna false sin relanzarla para no exponer detalles de BD al usuario final.
      *
-     * @param mysqli $conn La conexión a la BD.
-     * @param string $nombre
-     * @param string $email
-     * @param string $asunto
-     * @param string $mensaje
-     * @return bool True si se guardó, False si hubo un error.
+     * @param mysqli $conn    Conexión activa a la base de datos
+     * @param string $nombre  Nombre del remitente (validado con validarContacto() en el router)
+     * @param string $email   Email del remitente (validado con FILTER_VALIDATE_EMAIL previamente)
+     * @param string $asunto  Asunto del mensaje (alfanumérico, sanitizado con strip_tags)
+     * @param string $mensaje Cuerpo del mensaje (mínimo 10 caracteres, validado previamente)
+     * @return bool true si se insertó correctamente; false si ocurrió un error de BD
      */
     public function guardarMensaje($conn, $nombre, $email, $asunto, $mensaje)
     {
@@ -43,11 +70,16 @@ class Mensaje
     }
 
     /**
-     * Obtener todos los mensajes (para admin)
+     * Devuelve todos los mensajes de contacto, opcionalmente filtrados por estado.
+     * Si la columna 'estado' existe en la tabla, aplica el filtro directamente en SQL.
+     * Si no existe (instalación anterior a la migración), devuelve todos los mensajes
+     * simulando estado='pendiente' y retorna array vacío si se pide un estado distinto
+     * de 'todos' o 'pendiente' (ya que esos estados no existen sin la columna).
+     * Los resultados se ordenan por fecha_envio DESC (más recientes primero).
      *
-     * @param mysqli $conn
-     * @param string $filtro_estado 'todos', 'pendiente', 'respondido'
-     * @return array
+     * @param mysqli $conn          Conexión activa a la base de datos
+     * @param string $filtro_estado Estado a filtrar: 'todos', 'pendiente', 'respondido', 'archivado'
+     * @return array<int, array<string, mixed>> Filas de mensajes_contacto con todos sus campos
      */
     public function obtenerTodosMensajes($conn, $filtro_estado = 'todos')
     {
@@ -83,11 +115,15 @@ class Mensaje
     }
 
     /**
-     * Marcar mensaje como leído
+     * Marca un mensaje de contacto como leído estableciendo leido=1 en la BD.
+     * Se invoca automáticamente en MensajesController::ver() al renderizar el detalle
+     * para que el administrador no tenga que marcar mensajes manualmente.
+     * Usa sentencia preparada con parámetro enlazado para prevenir inyección SQL.
+     * Si el UPDATE falla por excepción de BD, captura el error y devuelve false.
      *
-     * @param mysqli $conn
-     * @param int $id_mensaje
-     * @return bool
+     * @param mysqli $conn       Conexión activa a la base de datos
+     * @param int    $id_mensaje ID del mensaje a marcar como leído
+     * @return bool true si el UPDATE se ejecutó sin errores; false si ocurrió una excepción
      */
     public function marcarComoLeido($conn, $id_mensaje)
     {
@@ -102,12 +138,16 @@ class Mensaje
     }
 
     /**
-     * Cambiar estado del mensaje
+     * Actualiza el campo 'estado' de un mensaje de contacto en la BD.
+     * Primero verifica con tieneColumnaEstado() si la columna existe; si no existe,
+     * devuelve false sin ejecutar el UPDATE para evitar errores de esquema en instalaciones antiguas.
+     * La validación del estado permitido ('pendiente', 'respondido', 'archivado') se delega
+     * al controlador que llama a este método — no se valida aquí para mantener el modelo simple.
      *
-     * @param mysqli $conn
-     * @param int $id_mensaje
-     * @param string $estado 'pendiente', 'respondido', 'archivado'
-     * @return bool
+     * @param mysqli $conn       Conexión activa a la base de datos
+     * @param int    $id_mensaje ID del mensaje cuyo estado se actualiza
+     * @param string $estado     Nuevo estado: 'pendiente', 'respondido' o 'archivado'
+     * @return bool true si el UPDATE se ejecutó; false si falta la columna o hay error de BD
      */
     public function cambiarEstado($conn, $id_mensaje, $estado)
     {
@@ -126,11 +166,15 @@ class Mensaje
     }
 
     /**
-     * Eliminar mensaje
+     * Elimina permanentemente un mensaje de contacto de la BD (DELETE físico).
+     * No hay papelera ni baja lógica: la fila se elimina de mensajes_contacto de forma irreversible.
+     * Usa sentencia preparada para prevenir inyección SQL en el parámetro $id_mensaje.
+     * Captura errores de BD y devuelve false en lugar de relanzar la excepción para evitar
+     * exponer detalles del esquema de BD al panel de administración.
      *
-     * @param mysqli $conn
-     * @param int $id_mensaje
-     * @return bool
+     * @param mysqli $conn       Conexión activa a la base de datos
+     * @param int    $id_mensaje ID del mensaje a eliminar
+     * @return bool true si el DELETE se ejecutó sin errores; false si ocurrió una excepción de BD
      */
     public function eliminarMensaje($conn, $id_mensaje)
     {
@@ -145,10 +189,15 @@ class Mensaje
     }
 
     /**
-     * Contar mensajes por estado
+     * Devuelve un resumen estadístico de los mensajes: total, pendientes, respondidos y no leídos.
+     * Usa SUM(CASE WHEN ...) en una sola consulta para calcular todos los contadores a la vez.
+     * Si la columna 'estado' no existe (instalación antigua), ejecuta una consulta de fallback
+     * que calcula solo total y no_leidos, asumiendo pendientes=total y respondidos=0.
+     * Usado por MensajesController::listar() para renderizar las estadísticas del panel de mensajes.
      *
-     * @param mysqli $conn
-     * @return array
+     * @param mysqli $conn Conexión activa a la base de datos
+     * @return array{total: int, pendientes: int, respondidos: int, no_leidos: int}
+     *         Contadores de mensajes; 'respondidos' es 0 en el modo fallback sin columna estado
      */
     public function contarMensajes($conn)
     {

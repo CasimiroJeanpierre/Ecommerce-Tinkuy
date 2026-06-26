@@ -1,4 +1,14 @@
 <?php
+/**
+ * Componente de barra de navegación del panel de vendedor (variante verde, Bootstrap sticky-top).
+ * Incluye el logotipo "Tinkuy Vendedor", enlaces a Dashboard, Mis Productos,
+ * Ventas, Envíos, Mi Perfil y cierre de sesión.
+ * Esta variante usa bg-success (verde) para diferenciarse del panel de admin (rojo).
+ *
+ * Variables esperadas desde el scope de inclusión:
+ *   $nombre_vendedor (string) - Nombre del vendedor autenticado (para el menú de usuario)
+ *   $base_url        (string) - URL base del proyecto para construir los href de los enlaces
+ */
 // Vista parcial para la navegación del vendedor
 // Incluir este archivo en todas las vistas de vendedor
 ?>

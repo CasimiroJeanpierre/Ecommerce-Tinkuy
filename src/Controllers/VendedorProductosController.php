@@ -1,6 +1,22 @@
 <?php
 require_once __DIR__ . '/../Models/Producto.php';
 
+/**
+ * Controlador de productos para el panel del vendedor.
+ * Gestiona el listado, alta y edición de los productos propios del vendedor autenticado.
+ * Delega la lógica de persistencia al modelo Producto y valida propiedad de cada producto
+ * antes de permitir edición (un vendedor no puede editar productos de otro vendedor).
+ *
+ * Métodos disponibles:
+ *   listar()               — Lista los productos del vendedor con variantes_json
+ *   agregarProducto()      — Procesa el formulario POST de alta de nuevo producto
+ *   editarProducto($id)    — Carga datos del producto y procesa actualización POST
+ *   cambiarEstado($id)     — Activa o desactiva una variante sin eliminarla
+ *
+ * Seguridad:
+ *   El constructor verifica sesión y rol 'vendedor'; redirige al login si no está autenticado.
+ *   Todos los métodos de escritura verifican que id_vendedor coincida con $_SESSION['usuario_id'].
+ */
 class VendedorProductosController
 {
     private $conn;
@@ -26,6 +42,11 @@ class VendedorProductosController
         }
     }
 
+    /**
+     * Devuelve el listado de productos del vendedor con sus variantes y categorías.
+     *
+     * @return array{productos: array, categorias: array, nombre_vendedor: string, id_vendedor: int, base_url: string}
+     */
     public function index()
     {
         $id_vendedor = $_SESSION['usuario_id'];
@@ -47,42 +68,46 @@ class VendedorProductosController
         ];
     }
 
+    /**
+     * Muestra el formulario de alta y procesa la creación del producto en POST.
+     * Delega persistencia al modelo Producto (crearProducto + guardarImagen).
+     *
+     * @return array{categorias: array, mensaje_error: string, mensaje_exito: string, base_url: string}
+     */
     public function agregarProducto()
     {
         $mensaje_error = "";
         $mensaje_exito = "";
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $nombre = strip_tags(trim($_POST['nombre'] ?? ''));
-            $descripcion = strip_tags(trim($_POST['descripcion'] ?? ''));
-            $nombre = strip_tags(trim($_POST['nombre'] ?? ''));
-            $descripcion = strip_tags(trim($_POST['descripcion'] ?? ''));
-            $id_categoria = filter_var($_POST['id_categoria'] ?? 0, FILTER_VALIDATE_INT);
-            $variantes = json_decode($_POST['variantes'] ?? '[]', true);
+            try {
+                $nombre       = strip_tags(trim($_POST['nombre'] ?? ''));
+                $descripcion  = strip_tags(trim($_POST['descripcion'] ?? ''));
+                $id_categoria = filter_var($_POST['id_categoria'] ?? 0, FILTER_VALIDATE_INT);
+                $variantes    = json_decode($_POST['variantes'] ?? '[]', true);
 
-            // Validar datos
-            if (empty($nombre) || empty($descripcion) || !$id_categoria || empty($variantes)) {
-                $mensaje_error = "Todos los campos son obligatorios";
-            } else {
-                try {
-                    $id_producto = $this->producto->crearProducto([
-                        'nombre' => $nombre,
-                        'descripcion' => $descripcion,
-                        'id_categoria' => $id_categoria,
-                        'id_vendedor' => $_SESSION['usuario_id'],
-                        'variantes' => $variantes
-                    ]);
-
-                    // Procesar imagen
-                    if (isset($_FILES['imagen']) && $_FILES['imagen']['error'] === 0) {
-                        $this->producto->guardarImagen($id_producto, $_FILES['imagen']);
-                    }
-
-                    $mensaje_exito = "Producto agregado exitosamente";
-
-                } catch (Exception $e) {
-                    $mensaje_error = "Error al agregar el producto: " . $e->getMessage();
+                if (empty($nombre) || empty($descripcion) || !$id_categoria || empty($variantes)) {
+                    throw new \InvalidArgumentException("Todos los campos son obligatorios");
                 }
+
+                $id_producto = $this->producto->crearProducto([
+                    'nombre'       => $nombre,
+                    'descripcion'  => $descripcion,
+                    'id_categoria' => $id_categoria,
+                    'id_vendedor'  => $_SESSION['usuario_id'],
+                    'variantes'    => $variantes
+                ]);
+
+                if (isset($_FILES['imagen']) && $_FILES['imagen']['error'] === 0) {
+                    $this->producto->guardarImagen($id_producto, $_FILES['imagen']);
+                }
+
+                $mensaje_exito = "Producto agregado exitosamente";
+
+            } catch (\InvalidArgumentException $e) {
+                $mensaje_error = $e->getMessage();
+            } catch (Exception $e) {
+                $mensaje_error = "Error al agregar el producto: " . $e->getMessage();
             }
         }
 
@@ -97,6 +122,14 @@ class VendedorProductosController
         ];
     }
 
+    /**
+     * Muestra y procesa el formulario de edición de un producto existente.
+     * Verifica propiedad antes de procesar (anti-IDOR): redirige si el producto
+     * no existe o no pertenece al vendedor autenticado.
+     *
+     * @param int $id_producto ID del producto a editar
+     * @return array{producto: array, categorias: array, mensaje_error: string, mensaje_exito: string, base_url: string}
+     */
     public function editarProducto($id_producto)
     {
         $mensaje_error = "";
@@ -110,32 +143,34 @@ class VendedorProductosController
         }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $nombre = trim($_POST['nombre'] ?? '');
-            $descripcion = trim($_POST['descripcion'] ?? '');
-            $id_categoria = filter_var($_POST['id_categoria'] ?? 0, FILTER_VALIDATE_INT);
-            $variantes = json_decode($_POST['variantes'] ?? '[]', true);
+            try {
+                $nombre       = trim($_POST['nombre'] ?? '');
+                $descripcion  = trim($_POST['descripcion'] ?? '');
+                $id_categoria = filter_var($_POST['id_categoria'] ?? 0, FILTER_VALIDATE_INT);
+                $variantes    = json_decode($_POST['variantes'] ?? '[]', true);
 
-            if (empty($nombre) || empty($descripcion) || !$id_categoria || empty($variantes)) {
-                $mensaje_error = "Todos los campos son obligatorios";
-            } else {
-                try {
-                    $this->producto->actualizarProducto($id_producto, [
-                        'nombre' => $nombre,
-                        'descripcion' => $descripcion,
-                        'id_categoria' => $id_categoria,
-                        'variantes' => $variantes
-                    ]);
-
-                    if (isset($_FILES['imagen']) && $_FILES['imagen']['error'] === 0) {
-                        $this->producto->actualizarImagen($id_producto, $_FILES['imagen']);
-                    }
-
-                    $mensaje_exito = "Producto actualizado exitosamente";
-                    $producto = $this->producto->getProducto($id_producto, $_SESSION['usuario_id']);
-
-                } catch (Exception $e) {
-                    $mensaje_error = "Error al actualizar el producto: " . $e->getMessage();
+                if (empty($nombre) || empty($descripcion) || !$id_categoria || empty($variantes)) {
+                    throw new \InvalidArgumentException("Todos los campos son obligatorios");
                 }
+
+                $this->producto->actualizarProducto($id_producto, [
+                    'nombre'       => $nombre,
+                    'descripcion'  => $descripcion,
+                    'id_categoria' => $id_categoria,
+                    'variantes'    => $variantes
+                ]);
+
+                if (isset($_FILES['imagen']) && $_FILES['imagen']['error'] === 0) {
+                    $this->producto->actualizarImagen($id_producto, $_FILES['imagen']);
+                }
+
+                $mensaje_exito = "Producto actualizado exitosamente";
+                $producto = $this->producto->getProducto($id_producto, $_SESSION['usuario_id']);
+
+            } catch (\InvalidArgumentException $e) {
+                $mensaje_error = $e->getMessage();
+            } catch (Exception $e) {
+                $mensaje_error = "Error al actualizar el producto: " . $e->getMessage();
             }
         }
 
@@ -150,6 +185,13 @@ class VendedorProductosController
         ];
     }
 
+    /**
+     * Cambia el estado (activo/inactivo) del producto, verificando propiedad del vendedor.
+     *
+     * @param int    $id_producto  ID del producto a modificar
+     * @param string $nuevo_estado 'activo' o 'inactivo'
+     * @return array{success: bool, message: string}
+     */
     public function cambiarEstado($id_producto, $nuevo_estado)
     {
         try {

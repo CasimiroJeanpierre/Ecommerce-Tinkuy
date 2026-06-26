@@ -1,10 +1,32 @@
 <?php
 // src/Models/Producto.php
 
+/**
+ * Modelo de productos del catálogo Ecommerce-Tinkuy.
+ * Centraliza todas las consultas SQL relacionadas con productos, variantes, imágenes y carrito.
+ * No gestiona sesiones ni lógica de negocio de controladores — solo acceso a datos.
+ *
+ * Métodos disponibles:
+ *   getProductosDestacados()   — hasta 3 productos activos con stock para el home
+ *   getProductoActivoPorId()   — detalle de un producto + galería de imágenes adicionales
+ *   getVariantesActivasPorId() — variantes activas con stock para la página de producto
+ *   getProductosFiltrados()    — catálogo con filtros de categoría, búsqueda y orden
+ *   getProductosDelCarrito()   — datos de variantes por IDs para la vista del carrito
+ */
 class Producto
 {
     /**
-     * Obtiene los productos destacados para la página de inicio.
+     * Devuelve hasta 3 productos activos con stock para la vitrina de la página principal.
+     * La subquery en SELECT calcula el precio mínimo de variantes activas con stock > 0
+     * para cada producto como precio_minimo. El filtro EXISTS garantiza que solo aparecen
+     * productos con al menos una variante disponible en el momento de la consulta.
+     * Los productos se seleccionan en orden aleatorio (ORDER BY RAND()) para mostrar
+     * variedad en cada carga — nota que RAND() puede ser lento en catálogos muy grandes.
+     *
+     * @param mysqli $conn Conexión activa a la base de datos
+     * @return array<int, array{id_producto: int, nombre_producto: string, descripcion: string,
+     *                          imagen_principal: string, precio_minimo: float}>
+     *         Hasta 3 productos con precio_minimo calculado; array vacío si falla la consulta
      */
     public function getProductosDestacados($conn)
     {
@@ -52,7 +74,14 @@ class Producto
     }
 
     /**
-     * Obtiene un producto específico por su ID.
+     * Obtiene un producto activo por su ID junto con su galería de imágenes adicionales.
+     * Solo devuelve productos con estado='activo'. Si el producto no existe o está inactivo, retorna null.
+     * Las imágenes adicionales se adjuntan como $producto['imagenes_adicionales'] (array de rutas).
+     *
+     * @param mysqli $conn       Conexión activa a la base de datos
+     * @param int    $id_producto ID del producto a consultar
+     * @return array{nombre_producto, descripcion, imagen_principal, estado, nombre_categoria, imagenes_adicionales: array}|null
+     *         null si el producto no existe o no está activo
      */
     public function getProductoActivoPorId($conn, $id_producto)
     {
@@ -89,7 +118,17 @@ class Producto
     }
 
     /**
-     * Obtiene las variantes activas y con stock de un producto.
+     * Devuelve las variantes activas con stock positivo de un producto específico.
+     * Solo incluye variantes con estado='activo' AND stock > 0 para evitar mostrar
+     * opciones agotadas en el selector talla/color de la página de detalle de producto.
+     * El resultado se ordena por talla y luego por color para una presentación consistente
+     * sin depender del orden de inserción en la BD.
+     * Si un producto no tiene variantes activas con stock, retorna un array vacío (no null).
+     *
+     * @param mysqli $conn       Conexión activa a la base de datos
+     * @param int    $id_producto ID del producto cuyas variantes activas se consultan
+     * @return array<int, array{id_variante: int, talla: string, color: string, precio: float, stock: int}>
+     *         Array de variantes disponibles ordenado por talla, color; vacío si no hay stock
      */
     public function getVariantesActivasPorId($conn, $id_producto)
     {
@@ -116,10 +155,20 @@ class Producto
     // ... (después de la función getVariantesActivasPorId) ...
 
     /**
-     * Obtiene todos los productos activos para el catálogo, con filtros.
-     * @param mysqli $conn La conexión a la base de datos.
-     * @param array $filtros Arreglo con 'categoria', 'buscar', 'orden'.
-     * @return array
+     * Obtiene el catálogo de productos activos con soporte de filtros dinámicos.
+     * La subconsulta interna de variantes (solo activas con stock > 0) calcula min_precio,
+     * max_precio y total_stock; el INNER JOIN garantiza que solo aparecen productos
+     * con al menos una variante disponible al momento de la consulta.
+     * Filtro por categoría: usa OR (id_categoria = ? OR id_categoria_padre = ?) para
+     * incluir productos de subcategorías cuando se selecciona una categoría padre.
+     * Filtro de búsqueda: usa LIKE %término% sobre nombre_producto (búsqueda parcial).
+     * Orden soportado: 'precio_asc' → min_precio ASC, 'precio_desc' → min_precio DESC,
+     * cualquier otro valor → nombre_producto ASC (comportamiento por defecto).
+     *
+     * @param mysqli $conn    Conexión activa a la base de datos
+     * @param array{categoria: int|null, buscar: string, orden: string} $filtros Criterios de filtrado y orden
+     * @return array<int, array{id_producto: int, nombre_producto: string, imagen_principal: string,
+     *                          nombre_categoria: string, min_precio: float, max_precio: float}>
      */
     public function getProductosFiltrados($conn, $filtros)
     {
@@ -195,12 +244,20 @@ class Producto
     // ... (después de la función getProductosFiltrados) ...
 
     /**
-     * Obtiene los detalles de los productos desde un array de IDs de variantes.
-     * Usado para construir la página del carrito.
+     * Obtiene los datos necesarios para renderizar los ítems del carrito a partir de
+     * un array de IDs de variantes (las claves de $_SESSION['carrito']).
+     * Hace JOIN entre variantes_producto y productos para obtener nombre, imagen, talla,
+     * color, precio y stock de cada variante solicitada en una sola consulta con IN().
+     * Devuelve los resultados indexados por id_variante para acceso O(1) en el router.
+     * Si el array de IDs está vacío, retorna un array vacío sin consultar la BD.
+     * Los ítems cuya variante ya no existe en BD simplemente no aparecen en el resultado;
+     * el router (procesarItemsCarrito) limpia esos ítems de $_SESSION['carrito'] a posteriori.
      *
-     * @param mysqli $conn La conexión a la BD.
-     * @param array $ids_variantes Array de IDs [1, 5, 12].
-     * @return array Array asociativo [id_variante => [detalles...]]
+     * @param mysqli     $conn          Conexión activa a la base de datos
+     * @param array<int> $ids_variantes IDs de variantes a consultar (claves de $_SESSION['carrito'])
+     * @return array<int, array{id_variante: int, nombre_producto: string, imagen_principal: string,
+     *                          talla: string, color: string, precio: float, stock: int}>
+     *         Mapa id_variante → datos de BD; vacío si no se encontró ninguna variante
      */
     public function getProductosDelCarrito($conn, $ids_variantes)
     {

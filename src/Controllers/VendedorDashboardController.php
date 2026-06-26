@@ -1,4 +1,22 @@
 <?php
+/**
+ * Controlador del dashboard del vendedor (procedural).
+ * Verifica la sesión, ejecuta las consultas de métricas del vendedor
+ * (envíos pendientes, total productos, stock total, ventas, gráfico semanal,
+ * top 5 más vendidos y productos sin ventas) y expone las variables para la vista.
+ *
+ * Variables que expone al scope de la vista:
+ *   $id_vendedor       (int)    - ID del vendedor en sesión
+ *   $nombre_vendedor   (string) - Usuario del vendedor
+ *   $envios_pendientes (int)    - Artículos pendientes de envío
+ *   $total_productos   (int)    - Productos activos del vendedor
+ *   $total_stock       (int)    - Unidades totales en stock activo
+ *   $total_ventas      (int)    - Artículos vendidos (estados enviado/entregado)
+ *   $json_labels       (string) - JSON con etiquetas de días para el gráfico
+ *   $json_data         (string) - JSON con totales diarios para el gráfico
+ *   $top_5_productos   (mysqli_result) - Cursor con los 5 productos más vendidos
+ *   $productos_sin_ventas (mysqli_result) - Cursor con productos activos sin ventas
+ */
 // Controlador sencillo para el dashboard del vendedor
 if (session_status() === PHP_SESSION_NONE)
     session_start();

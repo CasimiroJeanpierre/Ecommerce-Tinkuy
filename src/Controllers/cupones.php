@@ -1,4 +1,18 @@
 <?php
+/**
+ * Vista de gestión de cupones/códigos promocionales (panel de administración).
+ * Muestra la lista de cupones con opciones para crear nuevos vía modal,
+ * activar/desactivar cupones existentes y eliminarlos permanentemente.
+ * El formulario de creación valida el código (solo mayúsculas y números)
+ * y el porcentaje de descuento (0.01–100) antes de enviar al controlador.
+ *
+ * Variables esperadas (preparadas por AdminCuponesController::listar()):
+ *   $cupones       (array)  - Lista de cupones: id_cupon, codigo, porcentaje_descuento,
+ *                              fecha_expiracion (null = sin expiración), estado ('activo'|'inactivo')
+ *   $mensaje_error (string) - Error al crear (código duplicado, formato inválido) o eliminar
+ *   $mensaje_exito (string) - Confirmación tras crear, activar/desactivar o eliminar
+ *   $base_url      (string) - URL base del proyecto para construir los enlaces de acción
+ */
 $base_url = $base_url ?? (defined('BASE_URL') ? BASE_URL : '/Ecommerce-Tinkuy/public/index.php');
 ?>
 <!DOCTYPE html>

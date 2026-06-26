@@ -1,3 +1,22 @@
+<?php
+/**
+ * Vista del formulario de creación de usuarios (panel de administración).
+ * Permite al admin crear manualmente nuevas cuentas de cliente o vendedor
+ * sin necesidad de que el usuario pase por el registro público.
+ * El formulario POST envía los datos al mismo controlador AdminUsuariosController.
+ *
+ * Variables esperadas (provistas por AdminUsuariosController::crearUsuario()):
+ *   $mensaje_error (string) - Mensaje de error de validación o fallo de BD
+ *   $mensaje_exito (string) - Confirmación de alta exitosa del usuario
+ *   $roles         (array)  - Lista de roles disponibles: [id_rol, nombre_rol]
+ *                              (para poblar el select del formulario)
+ *   $nombre_admin  (string) - Nombre del administrador autenticado (desde $_SESSION)
+ *   $base_url      (string) - URL base del proyecto
+ *
+ * Campos del formulario POST:
+ *   nombre_usuario, email, contrasena, id_rol, nombres, apellidos
+ */
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>

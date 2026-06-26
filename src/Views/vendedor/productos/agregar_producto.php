@@ -1,4 +1,22 @@
 <?php
+/**
+ * Vista del formulario de alta de nuevo producto (panel de vendedor).
+ * Permite al vendedor publicar un nuevo producto con nombre, descripción, categoría,
+ * imagen principal, imágenes adicionales y al menos una variante (talla/color/precio/stock).
+ * El id_vendedor se asigna automáticamente desde la sesión en el controlador.
+ *
+ * Variables esperadas (provistas por VendedorController::agregarProducto()):
+ *   $categorias    (array)  - Lista de categorías: [id_categoria, nombre_categoria]
+ *                              para poblar el selector del formulario
+ *   $nombre_vendedor (string) - Nombre del vendedor autenticado (desde $_SESSION)
+ *   $base_url      (string) - URL base del proyecto
+ *   $mensaje_error (string) - Mensaje de error de validación o fallo al guardar
+ *   $mensaje_exito (string) - Confirmación tras publicar el producto correctamente
+ *
+ * Campos del formulario POST:
+ *   nombre_producto, descripcion, id_categoria, imagen_principal (file),
+ *   imagenes_adicionales[] (file[]), talla[], color[], precio[], stock[]
+ */
 // Vista de agregar producto (MVC)
 // Espera que el controlador provea: $categorias, $base_url, $mensaje_error, $mensaje_exito
 

@@ -1,6 +1,22 @@
 <?php
+/**
+ * Controlador procedural para cambiar el estado de una variante de producto (vendedor).
+ * Recibe id_variante y nuevo estado vía GET, verifica propiedad del vendedor,
+ * actualiza el campo 'estado' en variantes_producto y redirige con mensaje flash.
+ *
+ * Parámetros GET:
+ *   id     (int)    - ID de la variante a modificar
+ *   estado (string) - Nuevo estado: 'activo' o 'inactivo'
+ *
+ * Seguridad:
+ *   Verifica que $_SESSION['rol'] === 'vendedor'.
+ *   Verifica que la variante pertenece a un producto del vendedor autenticado (anti-IDOR).
+ *
+ * @deprecated Usar VendedorController::cambiarEstadoVariante() o la ruta vendedor_cambiar_estado_variante
+ *             a través del router de index.php para mantener el patrón MVC del proyecto.
+ */
 session_start();
-include '../admin/db.php'; // Asegúrate que la ruta a db.php sea correcta
+include '../admin/db.php';
 
 // --- Seguridad ---
 if (!isset($_SESSION['usuario_id']) || $_SESSION['rol'] !== 'vendedor') {

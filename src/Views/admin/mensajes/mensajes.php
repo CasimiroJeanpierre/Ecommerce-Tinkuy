@@ -1,3 +1,25 @@
+<?php
+/**
+ * Vista de gestión de mensajes de contacto (panel de administración).
+ * Muestra el bandeja de mensajes enviados por usuarios desde el formulario de contacto.
+ * Permite filtrar por estado y marcar mensajes como respondidos, leídos o archivados.
+ *
+ * Variables esperadas (provistas por MensajesController::listar()):
+ *   $mensajes      (array)  - Lista de mensajes filtrados: id_mensaje, nombre, email, asunto,
+ *                              mensaje, estado ('pendiente'|'respondido'|'archivado'),
+ *                              leido (0|1), fecha_envio
+ *   $estadisticas  (array)  - Contadores globales: total, pendientes, respondidos,
+ *                              archivados, no_leidos
+ *   $filtro_estado (string) - Estado activo de filtro: 'todos'|'pendiente'|'respondido'|'archivado'
+ *   $nombre_admin  (string) - Nombre del administrador autenticado (desde $_SESSION)
+ *   $base_url      (string) - URL base del proyecto para construir los enlaces de acción
+ *
+ * Acciones procesadas por MensajesController::procesarAcciones():
+ *   accion=marcar_respondido  + id=N → Cambia estado a 'respondido' y leido=1
+ *   accion=archivar           + id=N → Cambia estado a 'archivado'
+ *   accion=eliminar           + id=N → Elimina el mensaje permanentemente
+ */
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>

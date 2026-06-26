@@ -1,4 +1,15 @@
 <?php
+/**
+ * Vista del listado de productos del panel del vendedor.
+ * El controlador (VendedorController::listarProductos) provee todas las variables.
+ * No debe iniciar sesión ni acceder a BD directamente.
+ *
+ * Variables esperadas:
+ *   $productos        (array)  - Productos del vendedor con variantes en JSON (variantes_json)
+ *   $nombre_vendedor  (string) - Nombre del vendedor autenticado
+ *   $id_vendedor      (int)    - ID del vendedor autenticado
+ *   $base_url         (string) - URL base del proyecto
+ */
 // Vista de productos (ahora en MVC): espera que el controlador provea
 // $productos (array), $nombre_vendedor, $base_url.
 // Evitar iniciar sesión o incluir DB aquí: lo gestiona el controlador.
@@ -7,6 +18,18 @@ $productos = $productos ?? [];
 $nombre_vendedor = $nombre_vendedor ?? ($_SESSION['usuario'] ?? '');
 $base_url = $base_url ?? (defined('BASE_URL') ? BASE_URL : '/Ecommerce-Tinkuy/public/index.php');
 $project_root = defined('PROJECT_ROOT') ? PROJECT_ROOT : '/Ecommerce-Tinkuy';
+
+/** Devuelve el HTML del badge de alerta de stock para una variante, o '' si hay stock suficiente. */
+function badgeStock(int $stock): string
+{
+    if ($stock === 0) {
+        return ' <span class="badge bg-danger ms-1" title="Sin inventario">Agotado</span>';
+    }
+    if ($stock <= 5) {
+        return ' <span class="badge bg-warning text-dark ms-1" title="Pocas unidades disponibles">¡Bajo!</span>';
+    }
+    return '';
+}
 ?>
 
 <!DOCTYPE html>
@@ -118,20 +141,13 @@ $project_root = defined('PROJECT_ROOT') ? PROJECT_ROOT : '/Ecommerce-Tinkuy';
                                                         $has_active_variants = true;
                                                         $stock = (int) ($v['stock'] ?? 0);
 
-                                                        $alerta_stock = '';
-                                                        if ($stock === 0) {
-                                                            $alerta_stock = ' <span class="badge bg-danger ms-1" title="Sin inventario">Agotado</span>';
-                                                        } elseif ($stock <= 5) {
-                                                            $alerta_stock = ' <span class="badge bg-warning text-dark ms-1" title="Pocas unidades disponibles">¡Bajo!</span>';
-                                                        }
-
                                                         echo sprintf(
                                                             '<small>%s / %s | <strong>S/ %.2f</strong> | Stock: %d%s</small>', // Formato más compacto
                                                             htmlspecialchars($v['talla'] ?? '-'),
                                                             htmlspecialchars($v['color'] ?? '-'),
                                                             $v['precio'] ?? 0.00,
                                                             $stock,
-                                                            $alerta_stock
+                                                            badgeStock($stock)
                                                         );
                                                     }
                                                 }

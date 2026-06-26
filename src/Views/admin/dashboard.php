@@ -1,3 +1,20 @@
+<?php
+/**
+ * Vista del dashboard principal del panel de administración.
+ * Muestra métricas globales del sistema: pedidos, usuarios, productos e ingresos,
+ * junto con accesos directos a las secciones principales del panel.
+ *
+ * Variables esperadas (provistas por AdminController::dashboard()):
+ *   $total_pedidos       (int)    - Total de pedidos en el sistema
+ *   $pedidos_pendientes  (int)    - Pedidos con estado 'Pendiente de Pago' o 'Procesando'
+ *   $total_usuarios      (int)    - Total de usuarios registrados (todos los roles)
+ *   $total_productos     (int)    - Total de productos activos en el catálogo
+ *   $total_ingresos      (float)  - Ingresos acumulados de pedidos completados
+ *   $pedidos_recientes   (array)  - Últimos 5 pedidos: id, fecha, cliente, total, estado
+ *   $nombre_admin        (string) - Nombre del administrador autenticado (desde $_SESSION)
+ *   $base_url            (string) - URL base del proyecto para construir los enlaces
+ */
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>

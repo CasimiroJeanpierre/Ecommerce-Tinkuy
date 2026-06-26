@@ -1,4 +1,22 @@
 <?php
+/**
+ * Vista de detalle de un pedido (panel de administración).
+ * Muestra la cabecera completa del pedido (cliente, dirección, estado, totales) y
+ * todas sus líneas de detalle. El admin puede cambiar el estado de cada línea
+ * individualmente (pendiente → enviado → entregado) y asignar empresa de envío.
+ *
+ * Variables esperadas (provistas por AdminController::verPedido()):
+ *   $pedido           (array)  - Cabecera del pedido:
+ *                                 id_pedido, fecha_pedido, total_pedido, nombre_estado,
+ *                                 email, nombres, apellidos, direccion, ciudad, codigo_postal
+ *   $detalles         (array)  - Líneas del pedido:
+ *                                 nombre_producto, talla, color, cantidad, precio_historico,
+ *                                 subtotal, id_estado_detalle, numero_seguimiento, nombre_empresa
+ *   $estados_detalle  (array)  - Estados disponibles para el select de cambio de estado
+ *   $empresas_envio   (array)  - Empresas de envío disponibles para asignar
+ *   $nombre_admin     (string) - Nombre del administrador autenticado (desde $_SESSION)
+ *   $base_url         (string) - URL base del proyecto
+ */
 $project_root = defined('PROJECT_ROOT') ? PROJECT_ROOT : '/Ecommerce-Tinkuy';
 $base_path_img = $project_root . '/public/img/productos/';
 ?>

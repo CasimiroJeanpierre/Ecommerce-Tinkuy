@@ -1,6 +1,22 @@
 <?php
+/**
+ * Controlador procedural de eliminación/desactivación de usuarios (admin).
+ * Recibe el ID de usuario a desactivar vía GET, verifica permisos de admin,
+ * valida el ID y ejecuta la baja lógica (UPDATE estado='inactivo').
+ * No elimina físicamente el registro para preservar el historial de pedidos.
+ *
+ * Parámetros GET:
+ *   id (int) - ID del usuario a desactivar
+ *
+ * Seguridad:
+ *   Verifica $_SESSION['rol'] === 'admin'; redirige al login si no es admin.
+ *   Valida el ID con FILTER_VALIDATE_INT antes de ejecutar la consulta.
+ *
+ * @deprecated Usar AdminUsuariosController::desactivarCliente() a través del router MVC
+ *             (?page=admin_usuarios&eliminar_id=N) en lugar de esta ruta directa legacy.
+ */
 session_start();
-include 'db.php'; // Asegúrate que la conexión a la base de datos es correcta
+include 'db.php';
 
 // === Definir roles (IDs de tu BD) ===
 define('ROL_ADMIN', 1);

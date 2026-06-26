@@ -1,10 +1,46 @@
 <?php
+/**
+ * Vista y mini-controlador de verificación del segundo factor (2FA por email).
+ * Al llegar aquí, AuthController ya validó credenciales y generó un OTP de 6 dígitos
+ * almacenado en sesión. Esta vista verifica el código introducido y, si es correcto,
+ * completa la sesión del usuario y redirige según su rol.
+ *
+ * Flujo:
+ *   1. Verifica que $_SESSION['pending_2fa'] exista; si no, redirige al login.
+ *   2. En POST verifica que el código coincida y no haya expirado (5 minutos).
+ *   3. En éxito: copia pending_2fa a variables de sesión definitivas y llama redirigirPorRol().
+ *   4. En error: incrementa intentos fallidos (máx 3) y redirige al login al agotar intentos.
+ *
+ * Variables en sesión esperadas:
+ *   $_SESSION['pending_2fa']     (array)  - Datos del usuario: usuario_id, usuario, rol, email
+ *   $_SESSION['2fa_codigo']      (string) - Código de 6 dígitos generado por AuthController::iniciar2FA()
+ *   $_SESSION['2fa_expiracion']  (int)    - Timestamp UNIX de expiración del código (now+300s)
+ * Variables de scope:
+ *   $mensaje_error (string) - Error de código incorrecto, expirado o intentos agotados
+ *   $base_url      (string) - URL base del proyecto
+ */
 // src/Views/auth/verify_2fa.php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
 $base_url = defined('BASE_URL') ? BASE_URL : '/Ecommerce-Tinkuy/public/index.php';
+
+/** Redirige al destino correcto según el rol; respeta redirect_url pendiente para clientes. */
+function redirigirPorRol(string $rol, string $base_url): void
+{
+    if ($rol === 'admin') {
+        header("Location: " . $base_url . "?page=admin_dashboard");
+    } elseif ($rol === 'vendedor') {
+        header("Location: " . $base_url . "?page=vendedor_dashboard");
+    } elseif (isset($_SESSION['redirect_url'])) {
+        $url_pendiente = $_SESSION['redirect_url'];
+        unset($_SESSION['redirect_url']);
+        header("Location: " . $base_url . $url_pendiente);
+    } else {
+        header("Location: " . $base_url . "?page=index");
+    }
+}
 
 // Si no hay 2FA pendiente, redirigir al login
 if (!isset($_SESSION['pending_2fa'])) {
@@ -34,20 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Limpiar datos temporales
         unset($_SESSION['pending_2fa'], $_SESSION['2fa_codigo'], $_SESSION['2fa_expiracion']);
 
-        // Restaurar las redirecciones por rol que teníamos implementadas antes
-        if ($rol === 'admin') {
-            header("Location: " . $base_url . "?page=admin_dashboard");
-        } elseif ($rol === 'vendedor') {
-            header("Location: " . $base_url . "?page=vendedor_dashboard");
-        } else {
-            if (isset($_SESSION['redirect_url'])) {
-                $url_pendiente = $_SESSION['redirect_url'];
-                unset($_SESSION['redirect_url']);
-                header("Location: " . $base_url . $url_pendiente);
-            } else {
-                header("Location: " . $base_url . "?page=index");
-            }
-        }
+        redirigirPorRol($rol, $base_url);
         exit;
     } else {
         $mensaje_error = "Código incorrecto. Intenta de nuevo.";

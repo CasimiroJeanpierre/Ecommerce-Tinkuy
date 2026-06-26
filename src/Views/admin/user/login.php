@@ -1,3 +1,16 @@
+<?php
+/**
+ * Vista del formulario de inicio de sesión del panel de administración (ruta legacy).
+ * Esta vista fue el punto de entrada original del admin antes de migrar al router MVC.
+ * El login actual del sistema usa src/Views/auth/login.php vía ?page=login.
+ *
+ * Variables esperadas:
+ *   $login_error (string) - Mensaje de error de credenciales o acceso denegado
+ *
+ * @deprecated Acceder al panel admin mediante ?page=login (router MVC) en lugar de
+ *             esta URL directa. Este archivo se mantiene por compatibilidad.
+ */
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>

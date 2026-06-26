@@ -1,4 +1,22 @@
 <?php
+/**
+ * Vista del perfil del cliente autenticado (perfil personal, no panel de vendedor).
+ * Presenta tres secciones navegables mediante ?seccion=: datos personales,
+ * direcciones de envío y configuración de seguridad (cambio de contraseña).
+ *
+ * Variables definidas por UserController antes de renderizar:
+ *   $datos_perfil   (array)  - Datos personales: nombres, apellidos, email, telefono,
+ *                               foto_perfil (ruta relativa desde public/img/perfiles/)
+ *   $direcciones    (array)  - Direcciones de envío: id_direccion, direccion, ciudad,
+ *                               pais, codigo_postal, es_principal (0|1)
+ *   $tarjetas       (array)  - Métodos de pago guardados (simulados): id_tarjeta,
+ *                               nombre_tarjeta, ultimos_digitos, expiracion
+ *   $seccion_activa (string) - Sección del perfil activa: 'datos'|'direcciones'|'seguridad'
+ *                               (controlada por GET ?seccion=)
+ *   $base_url       (string) - URL base del proyecto
+ *   $mensaje_error  (string) - Error de validación o fallo en la actualización
+ *   $mensaje_exito  (string) - Confirmación tras actualizar datos correctamente
+ */
 // Llamar al controlador que prepara las variables para esta vista
 require_once __DIR__ . '/../../Controllers/UserController.php';
 // El controlador define: $base_url, $mensaje_error, $mensaje_exito, $seccion_activa,

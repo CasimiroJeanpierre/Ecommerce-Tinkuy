@@ -1,4 +1,13 @@
 <?php
+/**
+ * Vista de la página "Acerca de" / "Quiénes somos" de Tinkuy.
+ * Página estática que presenta la misión, visión y valores de la empresa,
+ * junto con información del equipo fundador y la historia de la marca.
+ * No requiere autenticación ni datos dinámicos de BD.
+ *
+ * Variables esperadas (disponibles por haber sido incluido desde public/index.php):
+ *   $base_url  (string) - URL base del proyecto para construir enlaces de navegación y assets
+ */
 // src/Views/about.php
 // Esta Vista es llamada por public/index.php, por lo que BASE_PATH ya existe.
 

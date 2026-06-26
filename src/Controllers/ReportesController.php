@@ -3,14 +3,30 @@
 require_once BASE_PATH . '/src/Models/Reporte.php';
 
 /**
- * Controlador de Reportes Administrativos
- * Gestiona generación y exportación de reportes (Excel/PDF)
+ * Controlador de reportes administrativos.
+ * Genera y exporta reportes consolidados de ventas, productos y vendedores.
+ * Soporta múltiples formatos de salida: vista HTML, CSV descargable y HTML imprimible.
+ *
+ * Métodos disponibles:
+ *   index()    — Muestra el formulario de filtros (vista vacía, sin datos)
+ *   generar()  — Aplica filtros (periodo, vendedor, categoría) y renderiza el reporte
+ *   exportar() — Genera y fuerza la descarga del reporte en CSV (Content-Type text/csv)
+ *
+ * Uso desde el router (public/index.php):
+ *   $ctrl = new ReportesController($conn);
+ *   $ctrl->index();    // ?page=admin_reportes
+ *   $ctrl->generar();  // ?page=admin_reportes_generar (POST con filtros)
+ *
+ * Nota: Solo admins pueden acceder; verificación de rol en el router antes de llamar.
  */
 class ReportesController
 {
     private $conn;
     private $reporte;
 
+    /**
+     * @param mysqli $conn Conexión activa a la base de datos
+     */
     public function __construct($conn)
     {
         $this->conn = $conn;
@@ -18,7 +34,10 @@ class ReportesController
     }
 
     /**
-     * Mostrar vista principal de reportes
+     * Muestra la vista principal del módulo de reportes con el formulario de filtros.
+     * No genera datos — solo carga la plantilla vacía.
+     *
+     * @return void
      */
     public function index()
     {
@@ -49,7 +68,11 @@ class ReportesController
     }
 
     /**
-     * Generar reporte (vista o exportación)
+     * Genera un reporte según tipo y rango de fechas.
+     * Soporta tipos: 'ventas', 'productos', 'vendedores'.
+     * Según el parámetro $formato renderiza la vista, exporta CSV o genera HTML para PDF.
+     *
+     * @return void
      */
     public function generar()
     {
@@ -108,7 +131,14 @@ class ReportesController
     }
 
     /**
-     * Exportar reporte a Excel (CSV mejorado)
+     * Exporta el reporte como CSV con BOM UTF-8 para compatibilidad con Excel.
+     * Envía headers de descarga y finaliza la ejecución.
+     *
+     * @param string $tipo        Tipo de reporte: 'ventas'|'productos'|'vendedores'
+     * @param array  $data        Datos del reporte: ['estadisticas' => array, 'datos' => array]
+     * @param string $fecha_inicio Fecha de inicio del período (Y-m-d)
+     * @param string $fecha_fin   Fecha de fin del período (Y-m-d)
+     * @return void
      */
     private function exportarExcel($tipo, $data, $fecha_inicio, $fecha_fin)
     {
@@ -164,7 +194,13 @@ class ReportesController
     }
 
     /**
-     * Exportar reporte a PDF (HTML simple convertido)
+     * Genera una página HTML lista para imprimir / guardar como PDF desde el navegador.
+     *
+     * @param string $tipo        Tipo de reporte: 'ventas'|'productos'|'vendedores'
+     * @param array  $data        Datos del reporte: ['estadisticas' => array, 'datos' => array]
+     * @param string $fecha_inicio Fecha de inicio del período (Y-m-d)
+     * @param string $fecha_fin   Fecha de fin del período (Y-m-d)
+     * @return void
      */
     private function exportarPDF($tipo, $data, $fecha_inicio, $fecha_fin)
     {
@@ -178,7 +214,13 @@ class ReportesController
     }
 
     /**
-     * Generar HTML formateado para PDF
+     * Construye el HTML con estilos y tabla de datos para la exportación PDF.
+     *
+     * @param string $tipo        Tipo de reporte
+     * @param array  $data        Datos del reporte: ['estadisticas' => array, 'datos' => array]
+     * @param string $fecha_inicio Fecha de inicio del período (Y-m-d)
+     * @param string $fecha_fin   Fecha de fin del período (Y-m-d)
+     * @return string HTML completo listo para imprimir
      */
     private function generarHTMLParaPDF($tipo, $data, $fecha_inicio, $fecha_fin)
     {

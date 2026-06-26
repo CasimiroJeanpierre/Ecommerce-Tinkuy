@@ -1,3 +1,24 @@
+<?php
+/**
+ * Vista del módulo de reportes del panel de administración.
+ * Presenta estadísticas consolidadas del sistema: resumen de ventas,
+ * ranking de productos más vendidos, rendimiento por vendedor
+ * y gráficos de evolución de ingresos generados con Chart.js.
+ *
+ * Variables esperadas (provistas por AdminReportesController::generar()):
+ *   $reporte_ventas       (array)  - KPIs globales: total_ventas (int),
+ *                                     ingresos_totales (float), ticket_promedio (float),
+ *                                     periodo (string: 'mes'|'trimestre'|'año')
+ *   $reporte_productos    (array)  - Top productos: nombre_producto, total_vendido,
+ *                                     ingresos_producto, nombre_vendedor
+ *   $reporte_vendedores   (array)  - Por vendedor: nombre_vendedor, total_ventas,
+ *                                     monto_total, productos_activos
+ *   $json_labels_ventas   (string) - JSON array de fechas para el eje X del gráfico
+ *   $json_data_ingresos   (string) - JSON array de ingresos diarios para Chart.js
+ *   $nombre_admin         (string) - Nombre del administrador autenticado (desde $_SESSION)
+ *   $base_url             (string) - URL base del proyecto
+ */
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>

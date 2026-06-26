@@ -1,28 +1,47 @@
 <?php
 // src/Controllers/AdminUsuariosController.php
 
+/**
+ * Controlador de administración de usuarios del sistema.
+ * Permite listar, desactivar (baja lógica), reactivar y crear usuarios con roles Admin o Vendedor.
+ *
+ * Reglas de negocio aplicadas:
+ *   - Un administrador no puede desactivar su propia cuenta
+ *   - Solo se pueden desactivar clientes con la acción 'eliminar'; para vendedores se usa 'desactivar'
+ *   - Al desactivar un vendedor, se ocultan automáticamente todos sus productos (transacción)
+ *   - Al reactivar un usuario, se reactivan automáticamente sus productos si era vendedor
+ *   - La creación de nuevos usuarios admite roles Admin (1) y Vendedor (2) únicamente
+ */
 class AdminUsuariosController
 {
 
     private $conn;
 
-    // Definimos los roles de tu código
-    private const ROL_ADMIN = 1;
+    private const ROL_ADMIN    = 1;
     private const ROL_VENDEDOR = 2;
-    private const ROL_CLIENTE = 3;
+    private const ROL_CLIENTE  = 3;
 
+    /**
+     * @param mysqli $db_connection Conexión activa a la base de datos
+     */
     public function __construct($db_connection)
     {
         $this->conn = $db_connection;
     }
 
-    /**
-     * Muestra la lista de usuarios y maneja las acciones (Eliminar Cliente, Desactivar Vendedor)
-     */
-    public function listarUsuarios()
-    {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Métodos privados auxiliares
+    // ─────────────────────────────────────────────────────────────────────────
 
-        // 1. Seguridad
+    /**
+     * Verifica que la sesión corresponda a un administrador activo.
+     * Si no hay sesión activa redirige a login; si el rol no es 'admin' establece
+     * mensaje de error en sesión y redirige al index.
+     *
+     * @return void
+     */
+    private function requerirAdmin(): void
+    {
         if (!isset($_SESSION['usuario_id'])) {
             header('Location: ?page=login');
             exit;
@@ -32,158 +51,212 @@ class AdminUsuariosController
             header('Location: ?page=index');
             exit;
         }
+    }
+
+    /**
+     * Desactiva la cuenta de un cliente (baja lógica — no elimina el registro).
+     * Verifica que el usuario exista y tenga rol ROL_CLIENTE (3) antes de actualizar.
+     * Un administrador no puede desactivar su propia cuenta.
+     *
+     * @param int $id_a_eliminar ID del usuario a desactivar
+     * @return void
+     */
+    private function desactivarCliente(int $id_a_eliminar): void
+    {
+        if ($id_a_eliminar === $_SESSION['usuario_id']) {
+            $_SESSION['mensaje_error'] = "No puedes desactivar tu propia cuenta.";
+            return;
+        }
+
+        $stmt_check = $this->conn->prepare("SELECT id_rol FROM usuarios WHERE id_usuario = ?");
+        $stmt_check->bind_param("i", $id_a_eliminar);
+        $stmt_check->execute();
+        $usuario_check = $stmt_check->get_result()->fetch_assoc();
+        $stmt_check->close();
+
+        if (!$usuario_check || (int) $usuario_check['id_rol'] !== self::ROL_CLIENTE) {
+            $_SESSION['mensaje_error'] = "Solo se pueden desactivar clientes con esta acción.";
+            return;
+        }
+
+        $stmt = $this->conn->prepare("UPDATE usuarios SET estado = 'inactivo' WHERE id_usuario = ?");
+        $stmt->bind_param("i", $id_a_eliminar);
+        $stmt->execute();
+        $stmt->close();
+        $_SESSION['mensaje_exito'] = "Cuenta de cliente desactivada correctamente (Baja Lógica).";
+    }
+
+    /**
+     * Desactiva un vendedor y oculta todos sus productos activos en una sola transacción.
+     * Usa transacción para garantizar consistencia: si falla algún UPDATE, revierte ambos.
+     * Un administrador no puede desactivar su propia cuenta de vendedor.
+     *
+     * @param int $id_a_desactivar ID del vendedor a desactivar
+     * @return void
+     */
+    private function desactivarVendedor(int $id_a_desactivar): void
+    {
+        if ($id_a_desactivar === $_SESSION['usuario_id']) {
+            $_SESSION['mensaje_error'] = "No puedes desactivar tu propia cuenta.";
+            return;
+        }
+
+        $this->conn->begin_transaction();
+        try {
+            $rol_vendedor = self::ROL_VENDEDOR;
+            $stmt_user = $this->conn->prepare(
+                "UPDATE usuarios SET estado = 'inactivo' WHERE id_usuario = ? AND id_rol = ?"
+            );
+            $stmt_user->bind_param("ii", $id_a_desactivar, $rol_vendedor);
+            $stmt_user->execute();
+            $stmt_user->close();
+
+            $stmt_prods = $this->conn->prepare(
+                "UPDATE productos SET estado = 'inactivo' WHERE id_vendedor = ?"
+            );
+            $stmt_prods->bind_param("i", $id_a_desactivar);
+            $stmt_prods->execute();
+            $stmt_prods->close();
+
+            $this->conn->commit();
+            $_SESSION['mensaje_exito'] = "Vendedor desactivado. Todos sus productos han sido ocultados.";
+        } catch (Exception $e) {
+            $this->conn->rollback();
+            $_SESSION['mensaje_error'] = "Error en la transacción: " . $e->getMessage();
+        }
+    }
+
+    /**
+     * Reactiva un usuario (cliente o vendedor) y sus productos en una sola transacción.
+     * Ejecuta dos UPDATEs: primero el usuario, luego sus productos (el de productos afecta
+     * solo a vendedores; en clientes la segunda consulta no actualiza filas pero no falla).
+     *
+     * @param int $id_a_reactivar ID del usuario a reactivar
+     * @return void
+     */
+    private function reactivarUsuario(int $id_a_reactivar): void
+    {
+        $this->conn->begin_transaction();
+        try {
+            $stmt_user = $this->conn->prepare(
+                "UPDATE usuarios SET estado = 'activo' WHERE id_usuario = ?"
+            );
+            $stmt_user->bind_param("i", $id_a_reactivar);
+            $stmt_user->execute();
+            $stmt_user->close();
+
+            // Si es vendedor, reactivar sus productos automáticamente
+            $stmt_prods = $this->conn->prepare(
+                "UPDATE productos SET estado = 'activo' WHERE id_vendedor = ?"
+            );
+            $stmt_prods->bind_param("i", $id_a_reactivar);
+            $stmt_prods->execute();
+            $stmt_prods->close();
+
+            $this->conn->commit();
+            $_SESSION['mensaje_exito'] = "Usuario reactivado exitosamente.";
+        } catch (Exception $e) {
+            $this->conn->rollback();
+            $_SESSION['mensaje_error'] = "Error al reactivar usuario: " . $e->getMessage();
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Métodos públicos (acciones del controlador)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Muestra la lista de todos los usuarios del sistema y despacha las acciones GET.
+     * Acciones GET soportadas: eliminar_id (desactivar cliente), desactivar_id (desactivar vendedor),
+     * reactivar_id (reactivar cualquier usuario). Todas redirigen al mismo método tras ejecutar.
+     * La consulta ORDER BY ordena primero por rol y luego por fecha de registro descendente.
+     *
+     * @return array{nombre_admin: string, usuarios: array, mensaje_error: string|null,
+     *               mensaje_exito: string|null, id_usuario_actual: int}
+     */
+    public function listarUsuarios(): array
+    {
+        $this->requerirAdmin();
         $nombre_admin = $_SESSION['usuario'];
 
-        // 2. Mensajes flash
         $mensaje_error = $_SESSION['mensaje_error'] ?? null;
         $mensaje_exito = $_SESSION['mensaje_exito'] ?? null;
         unset($_SESSION['mensaje_error'], $_SESSION['mensaje_exito']);
 
-        // 3. Lógica de Acciones (GET)
         try {
-            // --- ACCIÓN A: Eliminar Cliente (Tu lógica de usuarios.php) ---
             if (isset($_GET['eliminar_id'])) {
-                $id_a_eliminar = (int) $_GET['eliminar_id'];
-                if ($id_a_eliminar === $_SESSION['usuario_id']) {
-                    $_SESSION['mensaje_error'] = "No puedes desactivar tu propia cuenta.";
-                } else {
-                    $stmt_check = $this->conn->prepare("SELECT id_rol FROM usuarios WHERE id_usuario = ?");
-                    $stmt_check->bind_param("i", $id_a_eliminar);
-                    $stmt_check->execute();
-                    $usuario_check = $stmt_check->get_result()->fetch_assoc();
-
-                    if (!$usuario_check || (int) $usuario_check['id_rol'] !== self::ROL_CLIENTE) {
-                        $_SESSION['mensaje_error'] = "Solo se pueden desactivar clientes con esta acción.";
-                    } else {
-                        $stmt_del = $this->conn->prepare("UPDATE usuarios SET estado = 'inactivo' WHERE id_usuario = ?");
-                        $stmt_del->bind_param("i", $id_a_eliminar);
-                        $stmt_del->execute();
-                        $_SESSION['mensaje_exito'] = "Cuenta de cliente desactivada correctamente (Baja Lógica).";
-                    }
-                }
+                $this->desactivarCliente((int) $_GET['eliminar_id']);
                 header('Location: ?page=admin_usuarios');
                 exit;
             }
 
-            // --- ACCIÓN B: Desactivar Vendedor (¡Tu nueva lógica!) ---
             if (isset($_GET['desactivar_id'])) {
-                $id_a_desactivar = (int) $_GET['desactivar_id'];
-                if ($id_a_desactivar === $_SESSION['usuario_id']) {
-                    $_SESSION['mensaje_error'] = "No puedes desactivar tu propia cuenta.";
-                } else {
-                    $this->conn->begin_transaction();
-                    try {
-                        // 1. Desactivar al Vendedor
-                        $rol_vendedor = self::ROL_VENDEDOR; // <-- Variable Creada
-                        $stmt_user = $this->conn->prepare("UPDATE usuarios SET estado = 'inactivo' WHERE id_usuario = ? AND id_rol = ?");
-                        $stmt_user->bind_param("ii", $id_a_desactivar, $rol_vendedor); // <-- ¡Variable USADA!
-                        $stmt_user->execute();
-
-                        // 2. Desactivar TODOS sus productos
-                        $stmt_prods = $this->conn->prepare("UPDATE productos SET estado = 'inactivo' WHERE id_vendedor = ?");
-                        $stmt_prods->bind_param("i", $id_a_desactivar);
-                        $stmt_prods->execute();
-
-                        $this->conn->commit();
-                        $_SESSION['mensaje_exito'] = "Vendedor desactivado. Todos sus productos han sido ocultados.";
-                    } catch (Exception $e) {
-                        $this->conn->rollback();
-                        $_SESSION['mensaje_error'] = "Error en la transacción: " . $e->getMessage();
-                    }
-                }
+                $this->desactivarVendedor((int) $_GET['desactivar_id']);
                 header('Location: ?page=admin_usuarios');
                 exit;
             }
 
-            // --- ACCIÓN C: Reactivar Vendedor ---
             if (isset($_GET['reactivar_id'])) {
-                $id_a_reactivar = (int) $_GET['reactivar_id'];
-
-                $this->conn->begin_transaction();
-                try {
-                    // 1. Reactivar al Usuario (Ya sea Cliente o Vendedor)
-                    $stmt_user = $this->conn->prepare("UPDATE usuarios SET estado = 'activo' WHERE id_usuario = ?");
-                    $stmt_user->bind_param("i", $id_a_reactivar);
-                    $stmt_user->execute();
-
-                    // 2. Si es vendedor, reactivar TODOS sus productos automáticamente
-                    $stmt_prods = $this->conn->prepare("UPDATE productos SET estado = 'activo' WHERE id_vendedor = ?");
-                    $stmt_prods->bind_param("i", $id_a_reactivar);
-                    $stmt_prods->execute();
-                    $productos_reactivados = $stmt_prods->affected_rows;
-
-                    $this->conn->commit();
-                    $_SESSION['mensaje_exito'] = "Usuario reactivado exitosamente.";
-                } catch (Exception $e) {
-                    $this->conn->rollback();
-                    $_SESSION['mensaje_error'] = "Error al reactivar vendedor: " . $e->getMessage();
-                }
+                $this->reactivarUsuario((int) $_GET['reactivar_id']);
                 header('Location: ?page=admin_usuarios');
                 exit;
             }
 
         } catch (mysqli_sql_exception $e) {
-            if ($e->getCode() == 1451) {
-                $_SESSION['mensaje_error'] = "No se puede eliminar: el cliente tiene pedidos asociados.";
-            } else {
-                $_SESSION['mensaje_error'] = "Error de BD: " . $e->getMessage();
-            }
+            $msg = ($e->getCode() == 1451)
+                ? "No se puede eliminar: el cliente tiene pedidos asociados."
+                : "Error de BD: " . $e->getMessage();
+            $_SESSION['mensaje_error'] = $msg;
             header('Location: ?page=admin_usuarios');
             exit;
         }
 
-        // 4. Lógica de Visualización (GET)
-        $query_usuarios = "SELECT u.id_usuario, u.usuario, u.email, u.fecha_registro, u.id_rol, r.nombre_rol, p.nombres, p.apellidos, u.estado 
-                           FROM usuarios u 
-                           JOIN roles r ON u.id_rol = r.id_rol 
-                           LEFT JOIN perfiles p ON u.id_usuario=p.id_usuario 
+        $query_usuarios = "SELECT u.id_usuario, u.usuario, u.email, u.fecha_registro, u.id_rol,
+                                  r.nombre_rol, p.nombres, p.apellidos, u.estado
+                           FROM usuarios u
+                           JOIN roles r ON u.id_rol = r.id_rol
+                           LEFT JOIN perfiles p ON u.id_usuario = p.id_usuario
                            ORDER BY u.id_rol, u.fecha_registro DESC";
-        $resultado_usuarios = $this->conn->query($query_usuarios);
-        $usuarios = $resultado_usuarios->fetch_all(MYSQLI_ASSOC);
 
-        // 5. Devolver datos
+        $usuarios = $this->conn->query($query_usuarios)->fetch_all(MYSQLI_ASSOC);
+
         return [
-            'nombre_admin' => $nombre_admin,
-            'usuarios' => $usuarios,
-            'mensaje_error' => $mensaje_error,
-            'mensaje_exito' => $mensaje_exito,
-            'id_usuario_actual' => $_SESSION['usuario_id'] // Para la lógica de "Yo"
+            'nombre_admin'      => $nombre_admin,
+            'usuarios'          => $usuarios,
+            'mensaje_error'     => $mensaje_error,
+            'mensaje_exito'     => $mensaje_exito,
+            'id_usuario_actual' => $_SESSION['usuario_id'],
         ];
     }
 
     /**
-     * Muestra y procesa la página "Crear Usuario"
+     * Muestra y procesa el formulario para crear un nuevo usuario (admin o vendedor).
+     * En POST: valida formato de todos los campos, verifica unicidad de usuario/email,
+     * hace hash de la contraseña con password_hash y hace INSERT en usuarios + perfiles.
+     * En caso de usuario/email duplicado captura error MySQL 1062 y muestra mensaje claro.
+     *
+     * @return array{nombre_admin: string, mensaje_error: string, mensaje_exito: string,
+     *               roles: array, base_url: string, post_data: array}
      */
-    public function crearUsuario()
+    public function crearUsuario(): array
     {
-        // 1. Seguridad
-        if (!isset($_SESSION['usuario_id'])) {
-            header('Location: ?page=login');
-            exit;
-        }
-        if ($_SESSION['rol'] !== 'admin') {
-            $_SESSION['mensaje_error'] = "Acceso denegado: Requiere privilegios de administrador.";
-            header('Location: ?page=index');
-            exit;
-        }
-
-        $nombre_admin = $_SESSION['usuario'];
+        $this->requerirAdmin();
+        $nombre_admin  = $_SESSION['usuario'];
         $mensaje_error = "";
         $mensaje_exito = "";
-        $post_data = $_POST; // Para repoblar el formulario
+        $post_data     = $_POST;
 
-        // 2. Lógica POST
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $usuario = strip_tags(trim($_POST['usuario'] ?? ''));
-            $email = strip_tags(trim($_POST['email'] ?? ''));
-            $clave = $_POST['clave'] ?? '';
-            $nombres = strip_tags(trim($_POST['nombres'] ?? ''));
+            $usuario   = strip_tags(trim($_POST['usuario'] ?? ''));
+            $email     = strip_tags(trim($_POST['email'] ?? ''));
+            $clave     = $_POST['clave'] ?? '';
+            $nombres   = strip_tags(trim($_POST['nombres'] ?? ''));
             $apellidos = strip_tags(trim($_POST['apellidos'] ?? ''));
-            $telefono = strip_tags(trim($_POST['telefono'] ?? ''));
-            $id_rol = (int) ($_POST['id_rol'] ?? 0);
+            $telefono  = strip_tags(trim($_POST['telefono'] ?? ''));
+            $id_rol    = (int) ($_POST['id_rol'] ?? 0);
 
             $roles_permitidos = [self::ROL_ADMIN, self::ROL_VENDEDOR];
-            $nombre_rol = match ($id_rol) { 1 => 'Admin', 2 => 'Vendedor', default => 'Inválido'};
+            $nombre_rol       = match ($id_rol) { 1 => 'Admin', 2 => 'Vendedor', default => 'Inválido' };
 
             if (!in_array($id_rol, $roles_permitidos)) {
                 $mensaje_error = "Rol no válido.";
@@ -205,39 +278,37 @@ class AdminUsuariosController
                 $clave_hash = password_hash($clave, PASSWORD_DEFAULT);
                 $this->conn->begin_transaction();
 
-                $stmt_usuario = $this->conn->prepare("INSERT INTO usuarios (id_rol, usuario, email, clave_hash) VALUES (?, ?, ?, ?)");
+                $stmt_usuario = $this->conn->prepare(
+                    "INSERT INTO usuarios (id_rol, usuario, email, clave_hash) VALUES (?, ?, ?, ?)"
+                );
                 $stmt_usuario->bind_param("isss", $id_rol, $usuario, $email, $clave_hash);
                 $stmt_usuario->execute();
                 $nuevo_usuario_id = $this->conn->insert_id;
+                $stmt_usuario->close();
 
-                $stmt_perfil = $this->conn->prepare("INSERT INTO perfiles (id_usuario, nombres, apellidos, telefono) VALUES (?, ?, ?, ?)");
-                $telefono_a_insertar = $telefono ?: NULL;
+                $stmt_perfil = $this->conn->prepare(
+                    "INSERT INTO perfiles (id_usuario, nombres, apellidos, telefono) VALUES (?, ?, ?, ?)"
+                );
+                $telefono_a_insertar = $telefono ?: null;
                 $stmt_perfil->bind_param("isss", $nuevo_usuario_id, $nombres, $apellidos, $telefono_a_insertar);
                 $stmt_perfil->execute();
+                $stmt_perfil->close();
 
                 $this->conn->commit();
-                $mensaje_exito = "✅ Usuario '$usuario' creado exitosamente con rol $nombre_rol!";
-                $post_data = []; // Limpiar formulario
+                $mensaje_exito = "Usuario '{$usuario}' creado exitosamente con rol {$nombre_rol}.";
+                $post_data     = [];
 
             } catch (mysqli_sql_exception $e) {
                 $this->conn->rollback();
-                if ($e->getCode() == 1062) {
-                    $mensaje_error = "El usuario o email ya existe.";
-                } else {
-                    $mensaje_error = "Error al crear usuario: " . $e->getMessage();
-                }
+                $mensaje_error = ($e->getCode() == 1062)
+                    ? "El usuario o email ya existe."
+                    : "Error al crear usuario: " . $e->getMessage();
             } catch (Exception $e) {
                 $mensaje_error = $e->getMessage();
             }
         }
 
-        // 3. Devolver datos (para la vista/formulario)
-        return [
-            'nombre_admin' => $nombre_admin,
-            'mensaje_error' => $mensaje_error,
-            'mensaje_exito' => $mensaje_exito,
-            'post_data' => $post_data // Para repoblar el formulario
-        ];
+        return compact('nombre_admin', 'mensaje_error', 'mensaje_exito', 'post_data');
     }
 }
 ?>

@@ -1,4 +1,22 @@
 <?php
+/**
+ * Vista de edición de producto del panel de vendedor.
+ * Permite al vendedor modificar nombre, descripción, categoría, imagen principal,
+ * imágenes adicionales y variantes de sus propios productos.
+ * El vendedor solo puede editar productos que le pertenecen (verificado en el controlador).
+ *
+ * Variables esperadas (provistas por VendedorController::editarProducto()):
+ *   $producto              (array)  - Datos actuales del producto:
+ *                                      id_producto, nombre_producto, descripcion,
+ *                                      precio_base, id_categoria, imagen_principal, estado
+ *   $categorias_jerarquia  (array)  - Árbol de categorías (padre → [hijos]) para selector anidado
+ *   $variantes             (array)  - Variantes activas: [id_variante, talla, color, precio, stock]
+ *   $imagenes              (array)  - Imágenes adicionales: [id_imagen, ruta_imagen]
+ *   $nombre_vendedor       (string) - Nombre del vendedor autenticado (desde $_SESSION)
+ *   $base_url              (string) - URL base del proyecto
+ *   $mensaje_error         (string) - Mensaje de error tras operación fallida
+ *   $mensaje_exito         (string) - Mensaje de confirmación tras operación exitosa
+ */
 // Vista de edición de producto (MVC)
 // Espera que el controlador provea: $producto, $categorias_jerarquia, $variantes,
 // $base_url, $mensaje_error, $mensaje_exito

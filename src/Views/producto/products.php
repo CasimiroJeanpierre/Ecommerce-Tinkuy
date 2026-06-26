@@ -1,4 +1,21 @@
 <?php
+/**
+ * Vista del catálogo de productos con filtros, búsqueda y ordenamiento.
+ * Muestra el grid de productos disponibles con sidebar de categorías y
+ * barra de búsqueda/ordenamiento en la parte superior.
+ *
+ * Variables esperadas (preparadas por Producto::getProductosFiltrados() + router):
+ *   $productos_listados   (array)    - Productos filtrados:
+ *                                       id_producto, nombre_producto, imagen_principal,
+ *                                       precio_min, precio_max, nombre_categoria
+ *   $categorias           (array)    - Árbol o lista de categorías para el filtro lateral
+ *   $total_productos      (int)      - Cantidad de productos encontrados con los filtros activos
+ *   $id_categoria_filtro  (int|null) - ID de categoría seleccionada (null = todas)
+ *   $termino_busqueda     (string)   - Texto de búsqueda ingresado por el usuario
+ *   $orden                (string)   - Criterio activo: 'nombre_asc'|'precio_asc'|'precio_desc'
+ *   $filtros_activos      (bool)     - true si hay categoría o búsqueda activas (para botón "Limpiar")
+ *   $base_url             (string)   - URL base del proyecto
+ */
 // src/Views/products.php
 // Esta Vista espera que $productos_listados, $categorias, etc. ya existan.
 

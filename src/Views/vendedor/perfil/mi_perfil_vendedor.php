@@ -1,4 +1,19 @@
 <?php
+/**
+ * Vista del perfil del vendedor autenticado.
+ * Permite al vendedor consultar y actualizar sus datos personales (nombre, apellidos,
+ * teléfono, descripción de la tienda y foto de perfil) y ver sus métricas de rendimiento.
+ *
+ * Variables esperadas (provistas por VendedorController::actualizarPerfil()):
+ *   $datos_perfil        (array)  - Datos del perfil: nombres, apellidos, email,
+ *                                    telefono, descripcion_tienda, foto_perfil
+ *   $estadisticas        (array)  - Métricas del vendedor: total_ventas, total_productos,
+ *                                    ingresos_totales, productos_activos
+ *   $nombre_vendedor_sesion (string) - Nombre de usuario del vendedor (desde $_SESSION)
+ *   $base_url            (string) - URL base del proyecto
+ *   $mensaje_error       (string) - Error de validación o fallo al guardar cambios
+ *   $mensaje_exito       (string) - Confirmación tras actualizar el perfil correctamente
+ */
 // Vista MVC para Mi Perfil Vendedor
 // Variables esperadas: $base_url, $mensaje_error, $mensaje_exito, $datos_perfil
 // Si la vista se abre directamente, garantizamos las mínimas variables de sesión

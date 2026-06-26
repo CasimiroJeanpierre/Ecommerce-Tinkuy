@@ -1,4 +1,18 @@
 <?php
+/**
+ * Vista del formulario de registro de nuevos clientes.
+ * Incluye validación en dos pasos: primero RegisterController valida CSRF y reCAPTCHA
+ * (validarGuardiasRegistro), luego valida todos los campos del formulario y realiza
+ * el INSERT en BD. En error repobla el formulario con $post_data.
+ *
+ * Variables definidas por RegisterController antes de renderizar:
+ *   $mensaje_error (string) - Error de validación (formato, longitud) o email/usuario duplicado
+ *   $mensaje_exito (string) - Confirmación de registro exitoso (antes de redirigir)
+ *   $csrf_token    (string) - Token CSRF para proteger el formulario POST
+ *   $base_url      (string) - URL base del proyecto (para el enlace de volver al login)
+ *   $post_data     (array)  - Datos previos del formulario para repoblar campos tras error:
+ *                              usuario, email, nombres, apellidos
+ */
 // --- Controlador que maneja la lógica del registro ---
 require_once __DIR__ . '/../../Controllers/RegisterController.php';
 ?>

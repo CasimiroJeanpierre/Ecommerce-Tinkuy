@@ -1,4 +1,18 @@
 <?php
+/**
+ * Vista del carrito de compras.
+ * Muestra todos los ítems en el carrito de sesión, permite actualizar cantidades,
+ * eliminar ítems individualmente o vaciar el carrito completo.
+ * Los ítems se sincronizan con el stock real de BD al renderizar la vista.
+ *
+ * Variables esperadas (preparadas por public/index.php case 'cart'):
+ *   $carrito_items   (array)  - Ítems del carrito procesados por procesarItemsCarrito():
+ *                                id_variante, nombre, imagen_final, talla, color,
+ *                                cantidad, precio, subtotal, stock (máximo disponible)
+ *   $total_general   (float)  - Suma de subtotales de todos los artículos del carrito
+ *   $base_url        (string) - URL base del proyecto (para los links de acción)
+ *   $csrf_token      (string) - Token CSRF para los formularios POST del carrito
+ */
 // src/Views/cart.php
 // Esta Vista espera que $carrito_items y $total_general ya existan
 // (porque el Controlador 'public/index.php' ya los creó).

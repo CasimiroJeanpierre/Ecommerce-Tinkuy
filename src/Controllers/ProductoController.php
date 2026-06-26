@@ -1,18 +1,47 @@
 <?php
 // src/Controllers/ProductoController.php
 
+/**
+ * Controlador del catálogo público de productos.
+ * Gestiona el listado de productos con filtros por categoría, búsqueda por texto y orden.
+ * Delega la consulta al modelo Producto::getProductosFiltrados().
+ *
+ * Métodos disponibles:
+ *   listar() — Aplica filtros de GET (categoria, busqueda, orden) y retorna datos para la vista
+ *
+ * Uso desde el router (public/index.php):
+ *   $ctrl = new ProductoController($conn);
+ *   extract($ctrl->listar());
+ *   include BASE_PATH . '/src/Views/producto/products.php';
+ *
+ * Parámetros GET aceptados:
+ *   categoria (int)    — Filtra por ID de categoría
+ *   busqueda  (string) — Busca en nombre y descripción del producto
+ *   orden     (string) — 'nombre_asc'|'precio_asc'|'precio_desc'
+ */
 class ProductoController {
 
     private $conn;
 
-    // El constructor recibe la conexión a la BBDD
+    /**
+     * @param mysqli $db_connection Conexión activa a la base de datos
+     */
     public function __construct($db_connection) {
         $this->conn = $db_connection;
     }
 
     /**
-     * Muestra la página del catálogo (lista de productos)
-     * y maneja la lógica de filtros.
+     * Devuelve los datos del catálogo aplicando filtros de categoría, búsqueda y orden.
+     *
+     * @return array{
+     *   productos_listados: array,
+     *   categorias: array,
+     *   total_productos: int,
+     *   id_categoria_filtro: int|null,
+     *   termino_busqueda: string,
+     *   orden: string,
+     *   filtros_activos: bool
+     * }
      */
     public function listarProductos() {
         

@@ -1,13 +1,74 @@
 <?php
+/**
+ * Vista y mini-controlador de restablecimiento de contraseña por token.
+ * Se accede con ?page=reset_password&token=UUID desde el enlace del correo.
+ * Valida que el token exista, no haya expirado y no haya sido usado antes.
+ * Si el token es válido muestra el formulario de nueva contraseña.
+ *
+ * Flujo:
+ *   1. Lee el token de GET y lo busca en password_resets (usado=0, expiracion>now).
+ *   2. En GET válido: muestra formulario de nueva contraseña con $show_form=true.
+ *   3. En POST: valida nueva contraseña (7-30 chars, mayúscula, especial), hace UPDATE
+ *      en usuarios y marca el token como usado=1 en password_resets.
+ *   4. En éxito: redirige al login con mensaje flash.
+ *
+ * Variables disponibles:
+ *   $conn          (mysqli) - Conexión a la BD (provista por db.php)
+ *   $base_url      (string) - URL base del proyecto
+ *   $mensaje       (string) - Resultado de la operación: éxito, error o token inválido
+ *   $tipo_mensaje  (string) - Tipo Bootstrap: 'success'|'danger'|'warning'|'info'
+ *   $token_valido  (bool)   - true si el token GET es válido y no ha expirado
+ *   $show_form     (bool)   - true para mostrar el formulario de nueva contraseña
+ */
 // reset_password.php - Restablecer contraseña usando token del email
 // Este archivo debe ser cargado vía router: ?page=reset_password&token=...
 // Variables disponibles: $conn (db.php), $base_url (index.php)
 
 $mensaje = '';
-$tipo_mensaje = 'info'; // Para el color del alert
+$tipo_mensaje = 'info';
 $show_form = false;
-$token_raw = $_GET['token'] ?? ''; // Token de la URL
-$email_asociado = null; // Para pre-llenar o mostrar
+$token_raw = $_GET['token'] ?? '';
+$email_asociado = null;
+
+/**
+ * Actualiza la contraseña del usuario asociado al token y elimina el token usado.
+ * Devuelve array con claves: ok (bool), mensaje (string), show_form (bool), token (string|null).
+ */
+function aplicarResetContrasena(string $token_post, string $clave_nueva, $conn): array
+{
+    $token_hash = hash('sha256', $token_post);
+    $stmt = $conn->prepare("SELECT email FROM password_resets WHERE token_hash = ? AND expiracion > NOW() LIMIT 1");
+    $stmt->bind_param("s", $token_hash);
+    $stmt->execute();
+    $res  = $stmt->get_result();
+    $stmt->close();
+
+    if ($res->num_rows !== 1) {
+        return ['ok' => false, 'mensaje' => "Error: El enlace de restablecimiento es inválido o ha expirado.", 'show_form' => false, 'token' => null];
+    }
+
+    $email    = $res->fetch_assoc()['email'];
+    $new_hash = password_hash($clave_nueva, PASSWORD_DEFAULT);
+
+    try {
+        $conn->begin_transaction();
+
+        $upd = $conn->prepare("UPDATE usuarios SET clave_hash = ? WHERE email = ?");
+        $upd->bind_param("ss", $new_hash, $email);
+        $upd->execute();
+
+        $del = $conn->prepare("DELETE FROM password_resets WHERE email = ?");
+        $del->bind_param("s", $email);
+        $del->execute();
+
+        $conn->commit();
+        return ['ok' => true, 'mensaje' => "Contraseña actualizada correctamente. Ya puedes iniciar sesión.", 'show_form' => false, 'token' => null];
+    } catch (mysqli_sql_exception $e) {
+        $conn->rollback();
+        error_log("Error DB en reset_password: " . $e->getMessage());
+        return ['ok' => false, 'mensaje' => "Ocurrió un error al actualizar la contraseña. Inténtalo de nuevo.", 'show_form' => true, 'token' => $token_post];
+    }
+}
 
 // --- LÓGICA GET: Validar el token de la URL ---
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && !empty($token_raw)) {
@@ -30,14 +91,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && !empty($token_raw)) {
         $stmt_check_exist->bind_param("s", $token_hash);
         $stmt_check_exist->execute();
         $res_exist = $stmt_check_exist->get_result();
+        // El token nunca fue válido o ya se usó (INT-REST-3)
+        $mensaje = "Error (INT-REST-3): El enlace de restablecimiento no es válido o ya fue utilizado.";
         if ($res_exist->num_rows === 1) {
-             // El token existió pero expiró (INT-REST-2)
+            // El token existió pero expiró (INT-REST-2)
             $mensaje = "Error (INT-REST-2): El enlace de restablecimiento ha expirado. Solicita uno nuevo.";
-        } else {
-             // El token nunca fue válido o ya se usó (INT-REST-3)
-            $mensaje = "Error (INT-REST-3): El enlace de restablecimiento no es válido o ya fue utilizado.";
         }
-         $tipo_mensaje = 'danger';
+        $tipo_mensaje = 'danger';
     }
     $stmt->close();
     
@@ -83,54 +143,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && !empty($token_raw)) {
     }
     // --- FIN VALIDACIÓN ---
     else {
-        // Volver a validar el token antes de actualizar
-        $token_hash = hash('sha256', $token_post);
-        $stmt = $conn->prepare("SELECT email FROM password_resets WHERE token_hash = ? AND expiracion > NOW() LIMIT 1");
-        $stmt->bind_param("s", $token_hash);
-        $stmt->execute();
-        $res = $stmt->get_result();
-
-        if ($res->num_rows === 1) {
-            $row = $res->fetch_assoc();
-            $email = $row['email'];
-            
-            // Hashear la nueva contraseña
-            $new_hash = password_hash($clave_nueva, PASSWORD_DEFAULT); // Usar PASSWORD_DEFAULT
-
-            try {
-                 $conn->begin_transaction();
-                 
-                 // Actualizar contraseña en tabla usuarios
-                 $upd = $conn->prepare("UPDATE usuarios SET clave_hash = ? WHERE email = ?");
-                 $upd->bind_param("ss", $new_hash, $email);
-                 $upd->execute();
-
-                 // Eliminar el token usado de password_resets (Importante!)
-                 $del = $conn->prepare("DELETE FROM password_resets WHERE email = ?");
-                 $del->bind_param("s", $email);
-                 $del->execute();
-                 
-                 $conn->commit();
-
-                 $mensaje = "✅ Contraseña actualizada correctamente. Ya puedes iniciar sesión.";
-                 $tipo_mensaje = 'success';
-                 $show_form = false; // Ocultar formulario después del éxito
-
-            } catch (mysqli_sql_exception $e) {
-                 $conn->rollback();
-                 $mensaje = "Ocurrió un error al actualizar la contraseña. Inténtalo de nuevo.";
-                 error_log("Error DB en reset_password: " . $e->getMessage()); // Loggear error
-                 $tipo_mensaje = 'danger';
-                 $show_form = true; // Mostrar form de nuevo
-                 $token_raw = $token_post; 
-            }
-        } else {
-            // El token ya no era válido al momento del POST (INT-REST-2, INT-REST-3)
-            $mensaje = "Error: El enlace de restablecimiento es inválido o ha expirado.";
-            $tipo_mensaje = 'danger';
-            $show_form = false; // No mostrar form si el token falla en POST
+        $resultado  = aplicarResetContrasena($token_post, $clave_nueva, $conn);
+        $mensaje    = ($resultado['ok'] ? "✅ " : "") . $resultado['mensaje'];
+        $tipo_mensaje = $resultado['ok'] ? 'success' : 'danger';
+        $show_form  = $resultado['show_form'];
+        if ($resultado['token'] !== null) {
+            $token_raw = $resultado['token'];
         }
-        $stmt->close();
     }
 } elseif (empty($token_raw) && $_SERVER['REQUEST_METHOD'] !== 'POST') {
      // Si se accede sin token GET y no es un POST fallido (INT-REST-4)
