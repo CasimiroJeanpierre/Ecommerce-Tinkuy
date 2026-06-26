@@ -39,7 +39,10 @@ ini_set('session.use_strict_mode', '1');
 ini_set('session.use_only_cookies', '1');
 ini_set('session.cookie_httponly', '1');
 ini_set('session.cookie_samesite', 'Strict');
-if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+// Also check X-Forwarded-Proto for Azure/reverse-proxy environments where PHP sees plain HTTP
+$is_https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+         || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+if ($is_https) {
     ini_set('session.cookie_secure', '1');
 }
 
@@ -878,7 +881,7 @@ switch ($page) {
         $nombre = $email = $asunto = $mensaje = "";
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            if (!isset($_POST['csrf_token']) || !Security::validarCSRF($_POST['csrf_token'])) {
+            if (!isset($_POST['csrf_token']) || !Security::verificarCSRF($_POST['csrf_token'])) {
                 $mensaje_error = "Token de seguridad inválido. Por favor, recarga la página e inténtalo de nuevo.";
             } else {
             // Sanitizar campos con strip_tags para prevenir XSS; la validación de formato la hace validarContacto().

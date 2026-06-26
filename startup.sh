@@ -18,6 +18,7 @@ server {
     listen [::]:8080;
     root /home/site/wwwroot/public;
     index index.php index.html index.htm;
+    server_tokens off;
 
     error_page 500 502 503 504 /50x.html;
     location = /50x.html {
@@ -46,6 +47,7 @@ server {
         fastcgi_pass 127.0.0.1:9000;
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_hide_header X-Powered-By;
     }
 }
 NGINX_EOF
