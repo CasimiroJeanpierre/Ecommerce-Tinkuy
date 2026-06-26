@@ -22,6 +22,10 @@ $database = getenv('DB_NAME')     ?: 'tinkuy_db';
 // Si se proporciona un certificado SSL (Azure MySQL con SSL habilitado), usarlo.
 $ssl_ca = getenv('MYSQL_SSL_CA') ?: '';
 
+// PHP 8.1+ changed default mysqli error reporting to throw exceptions.
+// Revert to pre-8.1 behaviour: errors return false, not exceptions.
+mysqli_report(MYSQLI_REPORT_OFF);
+
 $conn = new mysqli();
 if ($ssl_ca && file_exists($ssl_ca)) {
     $conn->ssl_set(null, null, $ssl_ca, null, null);
@@ -33,4 +37,8 @@ if ($conn->connect_error) {
     http_response_code(500);
     die("Error interno del servidor. Por favor, inténtalo de nuevo más tarde.");
 }
+
+// One-time schema fix: TiDB imports from phpMyAdmin dumps may miss the
+// AUTO_INCREMENT MODIFY that comes after data inserts. Idempotent — safe to run each boot.
+@$conn->query("ALTER TABLE `login_intentos` MODIFY `id` INT NOT NULL AUTO_INCREMENT");
 ?>
