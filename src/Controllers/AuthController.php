@@ -174,9 +174,6 @@ function iniciar2FA(array $usuario_data, string $email, string $base_url): void
     $_SESSION['2fa_codigo']      = $codigo_2fa;
     $_SESSION['2fa_expiracion']  = time() + 300; // 5 minutos de validez
 
-    // Commit session before the SMTP call so data is not lost on timeout
-    session_write_close();
-
     require_once BASE_PATH . '/src/Views/admin/mailer_config.php';
     $asunto   = "Código de Seguridad 2FA | Tinkuy";
     $body_html = "
