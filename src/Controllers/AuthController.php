@@ -65,7 +65,8 @@ function validarGuardiasLogin(array $post): ?string
     if (empty($post['g-recaptcha-response'])) {
         return "Por favor, verifica que no eres un robot (CAPTCHA).";
     }
-    if (!Security::verificarRecaptcha($post['g-recaptcha-response'], '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe')) {
+    $recaptcha_secret = getenv('RECAPTCHA_SECRET_KEY') ?: '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI';
+    if (!Security::verificarRecaptcha($post['g-recaptcha-response'], $recaptcha_secret)) {
         return "Error en la validación del CAPTCHA. Intenta de nuevo.";
     }
     if (!isset($post['politicas_privacidad'])) {

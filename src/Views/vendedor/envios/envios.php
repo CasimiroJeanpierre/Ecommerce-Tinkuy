@@ -141,6 +141,7 @@ $project_root = defined('PROJECT_ROOT') ? PROJECT_ROOT : '/Ecommerce-Tinkuy';
                     <div class="modal-body">
                         <p>Vas a registrar el envío para el ítem: <strong id="modal-producto-nombre"></strong></p>
 
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Security::generarCSRF(), ENT_QUOTES, 'UTF-8') ?>">
                         <input type="hidden" name="accion" value="registrar_envio">
                         <input type="hidden" name="id_detalle_envio" id="id_detalle_envio" value="">
 

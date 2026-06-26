@@ -62,6 +62,13 @@ function aplicarResetContrasena(string $token_post, string $clave_nueva, $conn):
         $del->execute();
 
         $conn->commit();
+
+        // Invalidate any active session for this user after password change
+        session_unset();
+        session_destroy();
+        session_start();
+        session_regenerate_id(true);
+
         return ['ok' => true, 'mensaje' => "Contraseña actualizada correctamente. Ya puedes iniciar sesión.", 'show_form' => false, 'token' => null];
     } catch (mysqli_sql_exception $e) {
         $conn->rollback();

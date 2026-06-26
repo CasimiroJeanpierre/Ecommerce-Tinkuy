@@ -675,6 +675,11 @@ switch ($page) {
         $enviosController = new EnviosController($conn);
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && $_POST['accion'] === 'registrar_envio') {
+            if (!Security::verificarCSRF($_POST['csrf_token'] ?? '')) {
+                $_SESSION['mensaje_error'] = "Token de seguridad inválido. Recarga la página.";
+                header('Location: ' . $base_url . '?page=vendedor_envios');
+                exit;
+            }
             $resultado = $enviosController->registrarEnvio(
                 (int) $_POST['id_detalle_envio'],
                 (int) $_POST['id_empresa_envio'],

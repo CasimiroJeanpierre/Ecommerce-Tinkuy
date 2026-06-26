@@ -127,7 +127,7 @@
                             <?php if ($result_pedidos->num_rows > 0) : ?>
                                 <?php while ($pedido = $result_pedidos->fetch_assoc()) : ?>
                                     <tr>
-                                        <td class_alias="font-monospace">#<?= $pedido['id_pedido'] ?></td>
+                                        <td class="font-monospace">#<?= $pedido['id_pedido'] ?></td>
                                         <td><?= htmlspecialchars($pedido['nombre_cliente']) ?></td>
                                         <td><?= date("d/m/Y H:i", strtotime($pedido['fecha_pedido'])) ?></td>
                                         <td>

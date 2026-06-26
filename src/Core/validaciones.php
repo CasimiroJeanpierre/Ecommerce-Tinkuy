@@ -91,10 +91,12 @@ function validarClave(string $clave): ?string
 {
     if ($clave === '')
         return "La contraseña es obligatoria.";
-    if (strlen($clave) < 7 || strlen($clave) > 30)
-        return "La contraseña debe tener entre 7 y 30 caracteres.";
+    if (strlen($clave) < 8 || strlen($clave) > 30)
+        return "La contraseña debe tener entre 8 y 30 caracteres.";
     if (!preg_match('/[A-Z]/', $clave))
         return "La contraseña debe contener al menos una mayúscula.";
+    if (!preg_match('/[0-9]/', $clave))
+        return "La contraseña debe contener al menos un número.";
     if (!preg_match('/[^a-zA-Z0-9]/', $clave))
         return "La contraseña debe contener al menos un carácter especial.";
     return null;
