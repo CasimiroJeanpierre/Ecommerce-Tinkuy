@@ -1,6 +1,16 @@
 # Deshabilitar listado de directorios (ZAP: Divulgación de error de aplicación - CWE-550)
 Options -Indexes
 
+# Fallback routing when DocumentRoot is wwwroot (startup.sh not applied yet).
+# Serves static assets from public/ and routes PHP through root index.php.
+<IfModule mod_rewrite.c>
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(css|js|img)/(.+)$ public/$1/$2 [L]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L,QSA]
+</IfModule>
+
 # Ocultar versión del servidor en páginas de error de Apache (ZAP: Gran redirección - CWE-201)
 ServerSignature Off
 
