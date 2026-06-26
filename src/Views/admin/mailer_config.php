@@ -210,6 +210,7 @@ function send_mail($to, $subject, $body_html, $body_text = '')
         $mail->Password   = $cfg['password'];
         $mail->SMTPSecure = $cfg['secure'];
         $mail->Port       = $cfg['port'];
+        $mail->Timeout    = 10;
 
         configurarDebugMailer($mail);
 
@@ -238,7 +239,7 @@ function send_mail($to, $subject, $body_html, $body_text = '')
         if (stripos($error, 'Could not authenticate') !== false) {
             $error .= build_authentication_hint(MAIL_PROVIDER);
         }
-        echo "<pre>❌ Error al enviar correo: $error" . ($triedFallback ? " (Se intentó host alternativo)" : "") . "</pre>";
+        error_log("send_mail error: $error" . ($triedFallback ? " (fallback tried)" : ""));
         return false;
     }
 }
