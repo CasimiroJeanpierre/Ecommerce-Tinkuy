@@ -506,7 +506,7 @@ class VendedorController
             JOIN categorias AS c ON p.id_categoria = c.id_categoria
             LEFT JOIN variantes_producto AS vp ON p.id_producto = vp.id_producto
             WHERE p.id_vendedor = ?
-            GROUP BY p.id_producto
+            GROUP BY p.id_producto, p.nombre_producto, p.imagen_principal, p.estado, c.nombre_categoria
             ORDER BY p.estado ASC, p.nombre_producto ASC
         ";
 

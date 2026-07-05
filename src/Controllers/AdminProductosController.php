@@ -476,13 +476,13 @@ class AdminProductosController
         // --- 4. LÓGICA DE VISUALIZACIÓN (GET) ---
         // (Movemos tu consulta principal)
         $query = "
-            SELECT 
+            SELECT
                 p.id_producto, p.nombre_producto, p.imagen_principal,
                 c.nombre_categoria,
-                u.usuario AS nombre_vendedor, 
-                p.estado AS estado_producto, 
+                u.usuario AS nombre_vendedor,
+                p.estado AS estado_producto,
                 CONCAT(
-                    '[', 
+                    '[',
                     IFNULL(GROUP_CONCAT(
                         JSON_OBJECT(
                             'id_variante', vp.id_variante,
@@ -495,14 +495,21 @@ class AdminProductosController
                 ) AS variantes_json
             FROM productos AS p
             JOIN categorias AS c ON p.id_categoria = c.id_categoria
-            JOIN usuarios AS u ON p.id_vendedor = u.id_usuario 
+            JOIN usuarios AS u ON p.id_vendedor = u.id_usuario
             LEFT JOIN variantes_producto AS vp ON p.id_producto = vp.id_producto
-            GROUP BY p.id_producto
+            GROUP BY p.id_producto, p.nombre_producto, p.imagen_principal,
+                     c.nombre_categoria, u.usuario, p.estado
             ORDER BY p.id_producto DESC
         ";
 
         $resultado = $this->conn->query($query);
-        $productos = $resultado->fetch_all(MYSQLI_ASSOC);
+        if ($resultado === false) {
+            error_log("AdminProductosController::listarProductos query error: " . $this->conn->error);
+            $productos = [];
+            $mensaje_error = "Error al cargar los productos. Inténtalo de nuevo.";
+        } else {
+            $productos = $resultado->fetch_all(MYSQLI_ASSOC);
+        }
         // NO cerramos la conexión aquí
 
         // --- 5. DEVOLVEMOS LOS DATOS ---
