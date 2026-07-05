@@ -113,7 +113,7 @@ $project_root = defined('PROJECT_ROOT') ? PROJECT_ROOT : '/Ecommerce-Tinkuy'; ?>
                                     <tr>
                                         <td>
                                             <div class="d-flex align-items-center">
-                                                <img src="<?= $project_root ?>/public/img/productos/<?= htmlspecialchars($producto['imagen_principal']) ?>" alt="<?= htmlspecialchars($producto['nombre_producto']) ?>" class="rounded me-3 img-thumb">
+                                                <img src="<?= $public_url ?>/img/productos/<?= htmlspecialchars($producto['imagen_principal']) ?>" alt="<?= htmlspecialchars($producto['nombre_producto']) ?>" class="rounded me-3 img-thumb">
                                                 <strong><?= htmlspecialchars($producto['nombre_producto']) ?></strong>
                                             </div>
                                         </td>

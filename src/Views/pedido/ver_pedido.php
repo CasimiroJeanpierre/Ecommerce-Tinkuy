@@ -142,7 +142,7 @@ try {
                                                 <td>
                                                     <div class="d-flex align-items-center">
                                                         <?php if (!empty($imagen)): ?>
-                                                            <img src="<?= $project_root ?>/public/img/productos/<?= htmlspecialchars($imagen) ?>"
+                                                            <img src="<?= $public_url ?>/img/productos/<?= htmlspecialchars($imagen) ?>"
                                                                 alt="<?= htmlspecialchars($nombreProducto) ?>"
                                                                 class="img-thumbnail me-2"
                                                                 style="width: 50px; height: 50px; object-fit: cover;">

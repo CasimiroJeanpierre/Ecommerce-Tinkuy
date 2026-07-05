@@ -239,7 +239,7 @@ $project_root = defined('PROJECT_ROOT') ? PROJECT_ROOT : '/Ecommerce-Tinkuy'; ?>
                                         <?php if (!empty($imagenes_adicionales)): ?>
                                             <?php foreach ($imagenes_adicionales as $img): ?>
                                                 <div class="position-relative">
-                                                    <img src="<?= $project_root ?>/public/img/productos/<?= htmlspecialchars(trim($img['ruta_imagen'])) ?>"
+                                                    <img src="<?= $public_url ?>/img/productos/<?= htmlspecialchars(trim($img['ruta_imagen'])) ?>"
                                                         class="img-thumbnail"
                                                         style="width: 80px; height: 80px; object-fit: cover;">
                                                     <button type="submit" form="delete-img-<?= $img['id_imagen'] ?>"

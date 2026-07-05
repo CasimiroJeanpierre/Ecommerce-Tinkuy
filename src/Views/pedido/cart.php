@@ -89,7 +89,7 @@ $pagina_actual = 'carrito'; // Para el navbar
                                         <?php foreach ($carrito_items as $item): ?>
                                             <tr>
                                                 <td style="width: 100px;">
-                                                    <img src="<?= $project_root ?>/public/img/productos/<?= htmlspecialchars($item['imagen_final']) ?>"
+                                                    <img src="<?= $public_url ?>/img/productos/<?= htmlspecialchars($item['imagen_final']) ?>"
                                                         alt="<?= htmlspecialchars($item['nombre']) ?>" class="img-fluid rounded"
                                                         style="width: 80px; height: 80px; object-fit: cover;">
                                                 </td>

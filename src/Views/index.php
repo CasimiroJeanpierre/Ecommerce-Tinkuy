@@ -65,15 +65,15 @@ $pagina_actual = 'index'; // Para el navbar
             <div class="carousel-inner">
 
                 <div class="carousel-item active">
-                    <img src="<?= $project_root ?>/public/img/banner1.png" class="d-block w-100" alt="Banner 1"
+                    <img src="<?= $public_url ?>/img/banner1.png" class="d-block w-100" alt="Banner 1"
                         loading="lazy">
                 </div>
                 <div class="carousel-item">
-                    <img src="<?= $project_root ?>/public/img/banner3.png" class="d-block w-100" alt="Banner 2"
+                    <img src="<?= $public_url ?>/img/banner3.png" class="d-block w-100" alt="Banner 2"
                         loading="lazy">
                 </div>
                 <div class="carousel-item">
-                    <img src="<?= $project_root ?>/public/img/banner3.png" class="d-block w-100" alt="Banner 3"
+                    <img src="<?= $public_url ?>/img/banner3.png" class="d-block w-100" alt="Banner 3"
                         loading="lazy">
                 </div>
             </div>
@@ -100,7 +100,7 @@ $pagina_actual = 'index'; // Para el navbar
                         <div class="col-md-4 mb-4">
                             <div class="card h-100 shadow-sm">
 
-                                <img src="<?= $project_root ?>/public/img/productos/<?= htmlspecialchars($producto['imagen_principal']) ?>"
+                                <img src="<?= $public_url ?>/img/productos/<?= htmlspecialchars($producto['imagen_principal']) ?>"
                                     class="card-img-top producto-img"
                                     alt="<?= htmlspecialchars($producto['nombre_producto']) ?>">
 

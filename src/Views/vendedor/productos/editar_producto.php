@@ -41,7 +41,7 @@ $id_producto = $producto['id_producto'] ?? 0;
     <title>Editar Producto - Panel Vendedor</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" integrity="sha384-Ay26V7L8bsJTsX9Sxclnvsn+hkdiwRnrjZJXqKmkIDobPgIIWBOVguEcQQLDuhfN" crossorigin="anonymous" />
-    <link rel="stylesheet" href="<?= $project_root ?>/public/css/style.css">
+    <link rel="stylesheet" href="<?= $public_url ?>/css/style.css">
     <style>
         .variante-inactiva {
             opacity: 0.6;
@@ -182,7 +182,7 @@ $id_producto = $producto['id_producto'] ?? 0;
                                         <?php if (!empty($imagenes_adicionales)): ?>
                                             <?php foreach ($imagenes_adicionales as $img): ?>
                                                 <div class="position-relative">
-                                                    <img src="<?= $project_root ?>/public/img/productos/<?= htmlspecialchars(trim($img['ruta_imagen'])) ?>"
+                                                    <img src="<?= $public_url ?>/img/productos/<?= htmlspecialchars(trim($img['ruta_imagen'])) ?>"
                                                         class="img-thumbnail"
                                                         style="width: 80px; height: 80px; object-fit: cover;">
                                                     <button type="submit" form="delete-img-<?= $img['id_imagen'] ?>"

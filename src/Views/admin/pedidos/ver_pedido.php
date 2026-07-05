@@ -18,7 +18,7 @@
  *   $base_url         (string) - URL base del proyecto
  */
 $project_root = defined('PROJECT_ROOT') ? PROJECT_ROOT : '/Ecommerce-Tinkuy';
-$base_path_img = $project_root . '/public/img/productos/';
+$base_path_img = $public_url . '/img/productos/';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -151,7 +151,7 @@ $base_path_img = $project_root . '/public/img/productos/';
                                 // --- LÓGICA DE IMAGEN (CORREGIDA) ---
                                 $imagen_src = '';
                                 // Esta es la ruta base a tus imágenes públicas
-                                $base_path_img = $base_path_img ?? ($project_root . '/public/img/productos/'); 
+                                $base_path_img = $base_path_img ?? ($public_url . '/img/productos/'); 
 
                                 if (!empty($item['imagen_variante'])) {
                                     $imagen_src = $base_path_img . 'variantes/' . htmlspecialchars($item['imagen_variante']);

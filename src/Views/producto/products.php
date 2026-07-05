@@ -122,7 +122,7 @@ $pagina_actual = 'productos'; // Para el navbar
                         <div class="card h-100 shadow-sm product-card border-0 overflow-hidden">
                             
                             <a href="<?= $controller_url ?>?page=producto&id=<?= $prod['id_producto'] ?>">
-                                <img src="<?= $project_root ?>/public/img/productos/<?= htmlspecialchars($prod['imagen_principal'] ?: 'default.png') ?>" class="card-img-top product-card-img" alt="<?= htmlspecialchars($prod['nombre_producto']) ?>">
+                                <img src="<?= $public_url ?>/img/productos/<?= htmlspecialchars($prod['imagen_principal'] ?: 'default.png') ?>" class="card-img-top product-card-img" alt="<?= htmlspecialchars($prod['nombre_producto']) ?>">
                             </a>
                             
                             <div class="card-body d-flex flex-column pb-2">

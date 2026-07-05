@@ -47,7 +47,7 @@ $base_url = defined('PUBLIC_URL') ? PUBLIC_URL : ($project_root . "/public");
             </p>
             <div class="row align-items-center">
                 <div class="col-md-6 mb-4 mb-md-0">
-                    <img src="<?= $project_root ?>/public/img/muchastelas.jpeg" alt="Artesanas trabajando" class="img-fluid rounded shadow">
+                    <img src="<?= $public_url ?>/img/muchastelas.jpeg" alt="Artesanas trabajando" class="img-fluid rounded shadow">
                 </div>
                 <div class="col-md-6">
                     <h3 class="text-uppercase">Nuestra Historia</h3>
@@ -92,7 +92,7 @@ $base_url = defined('PUBLIC_URL') ? PUBLIC_URL : ($project_root . "/public");
         <h3 class="text-center mb-4">¿Cómo Trabajamos?</h3>
         <div class="row align-items-center">
             <div class="col-md-6 mb-4 mb-md-0">
-                <img src="<?= $project_root ?>/public/img/trabajadores.jpeg" alt="Proceso de trabajo artesanal" class="img-fluid rounded shadow">
+                <img src="<?= $public_url ?>/img/trabajadores.jpeg" alt="Proceso de trabajo artesanal" class="img-fluid rounded shadow">
             </div>
             <div class="col-md-6">
                 <p>

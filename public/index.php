@@ -90,7 +90,8 @@ require_once BASE_PATH . '/src/Models/Mensaje.php';
 // Controlador de Mensajes (solo definición de clase, sin efectos secundarios)
 require_once BASE_PATH . '/src/Controllers/MensajesController.php';
 
-$base_url = BASE_URL;
+$base_url  = BASE_URL;
+$public_url = PUBLIC_URL; // URL path to public/ dir: '' in Azure, '/Ecommerce-Tinkuy/public' locally
 $page = $_GET['page'] ?? 'index';
 
 // --- Funciones auxiliares para reducir anidamiento en el router ---

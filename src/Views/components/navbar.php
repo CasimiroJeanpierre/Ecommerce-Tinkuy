@@ -31,7 +31,7 @@ $display_name = htmlspecialchars($_SESSION['usuario'] ?? 'Mi Cuenta');
     <div class="container">
         
         <a class="navbar-brand d-flex align-items-center" href="<?= $base_url ?>?page=index">
-            <img src="<?= $project_root ?>/public/img/Logo.png" style="width: 50px; height: auto; margin-right: 10px;" alt="LogoTinkuy" /> 
+            <img src="<?= $public_url ?>/img/Logo.png" style="width: 50px; height: auto; margin-right: 10px;" alt="LogoTinkuy" /> 
             <span style="font-weight: bold; letter-spacing: 1px;">Tinkuy</span>
         </a>
         
