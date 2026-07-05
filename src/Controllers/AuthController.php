@@ -65,7 +65,7 @@ function validarGuardiasLogin(array $post): ?string
     if (empty($post['g-recaptcha-response'])) {
         return "Por favor, verifica que no eres un robot (CAPTCHA).";
     }
-    $recaptcha_secret = getenv('RECAPTCHA_SECRET_KEY') ?: '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI';
+    $recaptcha_secret = getenv('RECAPTCHA_SECRET_KEY') ?: '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe';
     if (!Security::verificarRecaptcha($post['g-recaptcha-response'], $recaptcha_secret)) {
         return "Error en la validación del CAPTCHA. Intenta de nuevo.";
     }
