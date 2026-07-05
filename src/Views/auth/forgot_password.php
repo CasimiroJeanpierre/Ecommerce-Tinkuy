@@ -84,7 +84,7 @@ function guardarTokenYEnviarEmail(string $email, $conn): array
 $csrf_token = Security::generarCSRF();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!isset($_POST['csrf_token']) || !Security::validarCSRF($_POST['csrf_token'])) {
+    if (!isset($_POST['csrf_token']) || !Security::verificarCSRF($_POST['csrf_token'])) {
         $mensaje = "Token de seguridad inválido. Por favor, recarga la página e inténtalo de nuevo.";
         $tipo_mensaje = 'danger';
     } else {
