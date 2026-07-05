@@ -20,6 +20,14 @@ server {
     index index.php index.html index.htm;
     server_tokens off;
 
+    # Security headers for ALL responses (static files never pass through PHP)
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https://cdn.jsdelivr.net https://www.google.com https://www.gstatic.com; font-src 'self' data: https://cdn.jsdelivr.net; frame-src https://www.google.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';" always;
+
     error_page 500 502 503 504 /50x.html;
     location = /50x.html {
         root /html/;
@@ -40,6 +48,9 @@ server {
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         fastcgi_hide_header X-Powered-By;
+        # add_header here breaks server-level inheritance so PHP-set security
+        # headers are not duplicated on dynamic responses.
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
     }
 }
 NGINX_EOF
