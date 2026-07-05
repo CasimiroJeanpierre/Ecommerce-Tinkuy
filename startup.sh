@@ -34,14 +34,6 @@ server {
         try_files $uri $uri/ /index.php?$query_string;
     }
 
-    # Security headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-    add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https://cdn.jsdelivr.net https://www.google.com https://www.gstatic.com; font-src 'self' data: https://cdn.jsdelivr.net; frame-src https://www.google.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';" always;
-
     location ~ \.php$ {
         fastcgi_split_path_info ^(.+?\.php)(|/.*)$;
         fastcgi_pass 127.0.0.1:9000;

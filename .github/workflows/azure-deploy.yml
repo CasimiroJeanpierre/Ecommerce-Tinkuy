@@ -34,3 +34,30 @@ jobs:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: .
+
+      - name: Restart App Service to apply startup.sh nginx config
+        env:
+          PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        run: |
+          KUDU_USER=$(echo "$PUBLISH_PROFILE" | python3 -c "
+          import sys, re
+          c = sys.stdin.read()
+          m = re.search(r'userName=\"(\\\$[^\"]+)\"', c)
+          print(m.group(1) if m else '')
+          ")
+          KUDU_PASS=$(echo "$PUBLISH_PROFILE" | python3 -c "
+          import sys, re
+          c = sys.stdin.read()
+          m = re.search(r'userPWD=\"([^\"]+)\"', c)
+          print(m.group(1) if m else '')
+          ")
+          if [ -n "$KUDU_USER" ] && [ -n "$KUDU_PASS" ]; then
+            curl -sf -X POST \
+              --user "$KUDU_USER:$KUDU_PASS" \
+              "https://${{ env.AZURE_WEBAPP_NAME }}.scm.azurewebsites.net/api/restart" \
+              && echo "App restarted OK" \
+              || echo "Restart request sent"
+            sleep 30
+          else
+            echo "Could not extract Kudu credentials from publish profile"
+          fi
