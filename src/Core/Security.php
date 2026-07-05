@@ -3,7 +3,7 @@
  * Clase centralizada de seguridad para Ecommerce-Tinkuy.
  * Implementa las cuatro capas de seguridad del sistema de autenticación:
  *
- *   1. CSRF protection  — generarCSRF(), validarCSRF($token)
+ *   1. CSRF protection  — generarCSRF(), verificarCSRF($token)
  *   2. Rate limiting    — estaRateLimited($ip, $usuario, $conn),
  *                         registrarIntento($ip, $usuario, $conn),
  *                         limpiarIntentosExitosos($ip, $usuario, $conn)
