@@ -237,11 +237,13 @@ function verificarCredenciales(array $usuario_data, string $clave, string $ip, s
 // ─────────────────────────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
+    $_SESSION['__dbg'] = 'POST recibido';
+
     // 1. Guardia de validaciones previas (CSRF, CAPTCHA, políticas)
     $guard_error = validarGuardiasLogin($_POST);
 
     if ($guard_error !== null) {
-        // PRG: redirect so F5 never re-submits the stale POST (also regenerates CSRF on GET)
+        $_SESSION['__dbg'] = 'Guardia falló: ' . $guard_error;
         $_SESSION['mensaje_error'] = $guard_error;
         header("Location: {$base_url}?page=login");
         exit;
@@ -256,6 +258,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $segundos      = Security::obtenerSegundosBloqueo($ip, $usuario, $conn);
         $minutos       = ceil($segundos / 60);
         $mensaje_error = "Demasiados intentos fallidos. Por seguridad, tu acceso ha sido bloqueado. Espera {$minutos} minuto(s) para intentar de nuevo.";
+        $_SESSION['__dbg'] = 'Rate limit: ' . $mensaje_error;
     }
 
     // 3. Validar formato de credenciales
@@ -264,12 +267,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $mensaje_error = ($error_formato !== null)
             ? manejarIntentoFallido($ip, $usuario, $conn, $error_formato)
             : '';
+        if ($error_formato !== null) {
+            $_SESSION['__dbg'] = 'Formato inválido: ' . $error_formato;
+        } else {
+            $_SESSION['__dbg'] = 'Guardias y formato OK. Buscando usuario "' . $usuario . '"';
+        }
     }
 
     // 4. Consultar usuario en BD y verificar credenciales
     if (empty($mensaje_error)) {
         $usuario_data  = buscarUsuario($usuario, $conn);
-        $mensaje_error = verificarCredenciales($usuario_data, $clave, $ip, $usuario, $conn, $base_url) ?? '';
+        $dbg_bd = empty($usuario_data) ? 'NO encontrado en BD' : 'encontrado (estado=' . $usuario_data['estado'] . ')';
+        $cred_resultado = verificarCredenciales($usuario_data, $clave, $ip, $usuario, $conn, $base_url);
+        // Si llegamos aquí, iniciar2FA NO fue llamado (habría hecho exit)
+        $mensaje_error = $cred_resultado ?? '';
+        $_SESSION['__dbg'] = 'BD: ' . $dbg_bd . ' | credenciales: ' . ($mensaje_error ?: '¡OK! (2FA debería haber redirigido)');
     }
 }
 

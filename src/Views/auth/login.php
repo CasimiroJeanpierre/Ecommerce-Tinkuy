@@ -84,6 +84,12 @@ require_once __DIR__ . '/../../Controllers/AuthController.php';
                             <?= htmlspecialchars($mensaje_error, ENT_QUOTES, 'UTF-8') ?>
                         </div>
                     <?php endif; ?>
+                    <?php /* DEBUG TEMPORAL */ if (isset($_SESSION['__dbg'])): ?>
+                        <div class="alert alert-warning small p-2">
+                            <strong>DEBUG:</strong> <?= htmlspecialchars($_SESSION['__dbg']) ?>
+                        </div>
+                        <?php unset($_SESSION['__dbg']); ?>
+                    <?php endif; ?>
 
                     <?php if ($mensaje_exito !== ''): ?>
                         <div class="alert alert-success d-flex align-items-center" role="alert">
