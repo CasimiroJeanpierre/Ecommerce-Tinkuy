@@ -6,6 +6,12 @@ echo "User: $(whoami)" >> "$LOG" 2>/dev/null
 
 NGINX_CONF="/etc/nginx/sites-enabled/default"
 
+# Create persistent PHP session directory on Azure Files before nginx starts.
+# chmod 777 ensures PHP-FPM (any user) can write session files regardless of umask.
+mkdir -p /home/site/php_sessions
+chmod 777 /home/site/php_sessions
+echo "php_sessions dir: $(ls -ld /home/site/php_sessions 2>&1)" >> "$LOG" 2>/dev/null
+
 if [ ! -f "$NGINX_CONF" ]; then
     echo "ERROR: $NGINX_CONF not found" >> "$LOG" 2>/dev/null
     exit 0

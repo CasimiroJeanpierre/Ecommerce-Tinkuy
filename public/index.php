@@ -53,18 +53,19 @@ $is_https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
 if ($is_https) {
     ini_set('session.cookie_secure', '1');
 }
-// On Azure App Service, /tmp is ephemeral (cleared on container restart/redeploy).
-// Prefer /home/site/php_sessions (Azure Files, persistent). Fall back to /tmp/tinkuy_sessions
-// if /home/site is not writable — this keeps CSRF working within a container's lifetime.
+// On Azure App Service, session.save_path is set to /home/site/php_sessions via
+// public/.user.ini (Azure Files, persistent across restarts). startup.sh creates and
+// chmods that directory before nginx starts. This block is a safety net only: if the
+// path from .user.ini is missing or unwritable (e.g., very first boot before startup.sh
+// has finished), fall back to a temp directory so sessions still work within the request.
 if (getenv('WEBSITE_SITE_NAME')) {
-    foreach (['/home/site/php_sessions', '/tmp/tinkuy_sessions'] as $az_session_path) {
-        if (!is_dir($az_session_path)) {
-            mkdir($az_session_path, 0750, true);
+    $az_save_path = ini_get('session.save_path');
+    if (!$az_save_path || !is_dir($az_save_path) || !is_writable($az_save_path)) {
+        $az_fallback = sys_get_temp_dir() . '/tinkuy_sessions';
+        if (!is_dir($az_fallback)) {
+            mkdir($az_fallback, 0777, true);
         }
-        if (is_dir($az_session_path) && is_writable($az_session_path)) {
-            ini_set('session.save_path', $az_session_path);
-            break;
-        }
+        ini_set('session.save_path', $az_fallback);
     }
 }
 

@@ -233,33 +233,38 @@ function verificarCredenciales(array $usuario_data, string $clave, string $ip, s
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // 1. Guardia de validaciones previas (CSRF, CAPTCHA, políticas)
-    $mensaje_error = validarGuardiasLogin($_POST);
+    $guard_error = validarGuardiasLogin($_POST);
 
+    if ($guard_error !== null) {
+        // PRG: redirect so F5 never re-submits the stale POST (also regenerates CSRF on GET)
+        $_SESSION['mensaje_error'] = $guard_error;
+        header("Location: {$base_url}?page=login");
+        exit;
+    }
+
+    $usuario = strip_tags(trim($_POST['usuario'] ?? ''));
+    $clave   = $_POST['clave'] ?? '';
+    $ip      = Security::obtenerIP();
+
+    // 2. Verificar bloqueo por rate-limiting
+    if (Security::estaRateLimited($ip, $usuario, $conn)) {
+        $segundos      = Security::obtenerSegundosBloqueo($ip, $usuario, $conn);
+        $minutos       = ceil($segundos / 60);
+        $mensaje_error = "Demasiados intentos fallidos. Por seguridad, tu acceso ha sido bloqueado. Espera {$minutos} minuto(s) para intentar de nuevo.";
+    }
+
+    // 3. Validar formato de credenciales
     if ($mensaje_error === null) {
-        $usuario = strip_tags(trim($_POST['usuario'] ?? ''));
-        $clave   = $_POST['clave'] ?? '';
-        $ip      = Security::obtenerIP();
+        $error_formato = validarDatosLogin($usuario, $clave);
+        $mensaje_error = ($error_formato !== null)
+            ? manejarIntentoFallido($ip, $usuario, $conn, $error_formato)
+            : null;
+    }
 
-        // 2. Verificar bloqueo por rate-limiting
-        if (Security::estaRateLimited($ip, $usuario, $conn)) {
-            $segundos      = Security::obtenerSegundosBloqueo($ip, $usuario, $conn);
-            $minutos       = ceil($segundos / 60);
-            $mensaje_error = "Demasiados intentos fallidos. Por seguridad, tu acceso ha sido bloqueado. Espera {$minutos} minuto(s) para intentar de nuevo.";
-        }
-
-        // 3. Validar formato de credenciales
-        if ($mensaje_error === null) {
-            $error_formato = validarDatosLogin($usuario, $clave);
-            $mensaje_error = ($error_formato !== null)
-                ? manejarIntentoFallido($ip, $usuario, $conn, $error_formato)
-                : null;
-        }
-
-        // 4. Consultar usuario en BD y verificar credenciales
-        if ($mensaje_error === null) {
-            $usuario_data  = buscarUsuario($usuario, $conn);
-            $mensaje_error = verificarCredenciales($usuario_data, $clave, $ip, $usuario, $conn, $base_url);
-        }
+    // 4. Consultar usuario en BD y verificar credenciales
+    if ($mensaje_error === null) {
+        $usuario_data  = buscarUsuario($usuario, $conn);
+        $mensaje_error = verificarCredenciales($usuario_data, $clave, $ip, $usuario, $conn, $base_url);
     }
 }
 
