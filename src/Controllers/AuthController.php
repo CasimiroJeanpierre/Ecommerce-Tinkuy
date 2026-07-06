@@ -150,7 +150,6 @@ function iniciar2FA(array $usuario_data, string $email, string $base_url): void
     Security::resetearIntentos($_SERVER['REMOTE_ADDR'] ?? '', $usuario_data['uname'], $GLOBALS['conn']);
     Security::registrarIntento($_SERVER['REMOTE_ADDR'] ?? '', $usuario_data['uname'], true, $GLOBALS['conn']);
     Security::rotarCSRF();
-    session_regenerate_id(true);
 
     $nombres = $apellidos = '';
     $perfil_stmt = $GLOBALS['conn']->prepare(
