@@ -177,8 +177,15 @@ function iniciar2FA(array $usuario_data, string $email, string $base_url): void
     $_SESSION['2fa_codigo']      = $codigo_2fa;
     $_SESSION['2fa_expiracion']  = time() + 300; // 5 minutos de validez
 
-    // Commit session before the SMTP call so data is not lost on timeout
+    // Save session, redirect the browser immediately, then send email in the background.
+    // fastcgi_finish_request() closes the FastCGI connection (returning the HTTP response
+    // to the browser) while letting this PHP-FPM worker keep running — so the user sees
+    // the verify_2fa page instantly instead of waiting for the SMTP round-trip.
     session_write_close();
+    header("Location: {$base_url}?page=verify_2fa");
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request(); // browser gets redirect now; email is sent silently after
+    }
 
     require_once BASE_PATH . '/src/Views/admin/mailer_config.php';
     $asunto   = "Código de Seguridad 2FA | Tinkuy";
@@ -197,7 +204,6 @@ function iniciar2FA(array $usuario_data, string $email, string $base_url): void
         error_log("iniciar2FA: send_mail threw " . get_class($t) . ": " . $t->getMessage());
     }
 
-    header("Location: {$base_url}?page=verify_2fa");
     exit;
 }
 
