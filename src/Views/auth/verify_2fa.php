@@ -100,12 +100,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?= htmlspecialchars($mensaje_error) ?>
             </div>
         <?php endif; ?>
-        <?php /* DEBUG TEMPORAL — eliminar después de confirmar el flujo */ ?>
-        <?php if (isset($_SESSION['2fa_codigo'])): ?>
-            <div class="alert alert-info text-center">
-                <strong>Código (debug):</strong> <?= htmlspecialchars($_SESSION['2fa_codigo']) ?>
-            </div>
-        <?php endif; ?>
         <form method="POST" autocomplete="off">
             <div class="mb-3">
                 <label for="codigo_2fa" class="form-label">Código de Verificación</label>
