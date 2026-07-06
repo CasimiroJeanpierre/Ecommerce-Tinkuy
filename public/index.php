@@ -54,13 +54,18 @@ if ($is_https) {
     ini_set('session.cookie_secure', '1');
 }
 // On Azure App Service, /tmp is ephemeral (cleared on container restart/redeploy).
-// Store sessions in /home/site/php_sessions which is backed by Azure Files and persists.
+// Prefer /home/site/php_sessions (Azure Files, persistent). Fall back to /tmp/tinkuy_sessions
+// if /home/site is not writable — this keeps CSRF working within a container's lifetime.
 if (getenv('WEBSITE_SITE_NAME')) {
-    $az_session_path = '/home/site/php_sessions';
-    if (!is_dir($az_session_path)) {
-        @mkdir($az_session_path, 0750, true);
+    foreach (['/home/site/php_sessions', '/tmp/tinkuy_sessions'] as $az_session_path) {
+        if (!is_dir($az_session_path)) {
+            mkdir($az_session_path, 0750, true);
+        }
+        if (is_dir($az_session_path) && is_writable($az_session_path)) {
+            ini_set('session.save_path', $az_session_path);
+            break;
+        }
     }
-    ini_set('session.save_path', $az_session_path);
 }
 
 session_start();
