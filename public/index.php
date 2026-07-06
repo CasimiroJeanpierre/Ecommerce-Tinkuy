@@ -40,7 +40,7 @@ header("X-Content-Type-Options: nosniff");
 header("Referrer-Policy: strict-origin-when-cross-origin");
 header("Permissions-Policy: geolocation=(), microphone=(), camera=()");
 header("Strict-Transport-Security: max-age=31536000; includeSubDomains");
-header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https://cdn.jsdelivr.net https://www.google.com https://www.gstatic.com; font-src 'self' data: https://cdn.jsdelivr.net; frame-src https://www.google.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self';");
+header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.google.com https://www.gstatic.com https://cdn.userway.org; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.userway.org; img-src 'self' data: https://cdn.jsdelivr.net https://www.google.com https://www.gstatic.com https://cdn.userway.org; font-src 'self' data: https://cdn.jsdelivr.net https://cdn.userway.org; frame-src https://www.google.com https://cdn.userway.org; connect-src 'self' https://api.userway.org https://cdn.userway.org; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self';");
 
 // --- Hardening de sesión: debe ir ANTES de session_start() ---
 ini_set('session.use_strict_mode', '1');
