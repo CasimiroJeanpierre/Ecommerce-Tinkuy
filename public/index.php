@@ -53,20 +53,18 @@ $is_https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
 if ($is_https) {
     ini_set('session.cookie_secure', '1');
 }
-// On Azure App Service, session.save_path is set to /home/site/php_sessions via
-// public/.user.ini (Azure Files, persistent across restarts). startup.sh creates and
-// chmods that directory before nginx starts. This block is a safety net only: if the
-// path from .user.ini is missing or unwritable (e.g., very first boot before startup.sh
-// has finished), fall back to a temp directory so sessions still work within the request.
+// On Azure App Service, store sessions in /tmp (local to the container) instead of
+// /home/site/php_sessions (Azure Files). Azure Files SMB has a client-side attribute
+// cache that delays session visibility between PHP-FPM workers by several seconds,
+// breaking flash messages, CSRF verification, and the 2FA pending_2fa handoff.
+// /tmp is ephemeral (cleared on restart) but is shared by all FPM workers in the
+// same container instance, so there is zero caching delay.
 if (getenv('WEBSITE_SITE_NAME')) {
-    $az_save_path = ini_get('session.save_path');
-    if (!$az_save_path || !is_dir($az_save_path) || !is_writable($az_save_path)) {
-        $az_fallback = sys_get_temp_dir() . '/tinkuy_sessions';
-        if (!is_dir($az_fallback)) {
-            mkdir($az_fallback, 0777, true);
-        }
-        ini_set('session.save_path', $az_fallback);
+    $az_session_path = sys_get_temp_dir() . '/tinkuy_sessions';
+    if (!is_dir($az_session_path)) {
+        mkdir($az_session_path, 0777, true);
     }
+    ini_set('session.save_path', $az_session_path);
 }
 
 session_start();
