@@ -12,10 +12,11 @@ APP_NAME="app-tinkuy"       # cambia si el nombre ya está tomado en Azure
 RUNTIME="PHP|8.2"
 
 # ─── CREDENCIALES TIDB SERVERLESS ────────────────────────────────────────────
-DB_HOST="gateway01.us-east-1.prod.aws.tidbcloud.com"
+# NUNCA pongas credenciales reales aquí. Cópialas desde TiDB Cloud > Connect.
+DB_HOST="<host>.prod.aws.tidbcloud.com"
 DB_PORT="4000"
-DB_USER="4WbyRESZ4VyDF1p.root"
-DB_PASSWORD="cfSHyEbPO0PHzlck"
+DB_USER="<usuario>.root"
+DB_PASSWORD="<contraseña>"
 DB_NAME="tinkuy_db"
 MYSQL_SSL_CA="/etc/ssl/certs/ca-certificates.crt"
 
