@@ -259,17 +259,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // 3. Validar formato de credenciales
-    if ($mensaje_error === null) {
+    if (empty($mensaje_error)) {
         $error_formato = validarDatosLogin($usuario, $clave);
         $mensaje_error = ($error_formato !== null)
             ? manejarIntentoFallido($ip, $usuario, $conn, $error_formato)
-            : null;
+            : '';
     }
 
     // 4. Consultar usuario en BD y verificar credenciales
-    if ($mensaje_error === null) {
+    if (empty($mensaje_error)) {
         $usuario_data  = buscarUsuario($usuario, $conn);
-        $mensaje_error = verificarCredenciales($usuario_data, $clave, $ip, $usuario, $conn, $base_url);
+        $mensaje_error = verificarCredenciales($usuario_data, $clave, $ip, $usuario, $conn, $base_url) ?? '';
     }
 }
 
