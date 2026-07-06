@@ -10,6 +10,12 @@
  *   $csrf_token    (string) - Token CSRF para proteger el formulario POST
  *   $base_url      (string) - URL base del proyecto (para los enlaces de registro y recuperación)
  */
+// Capturar datos del request ANTES de que el controlador pueda redirigir
+$__dbg_method  = $_SERVER['REQUEST_METHOD'];
+$__dbg_user    = htmlspecialchars($_POST['usuario'] ?? '', ENT_QUOTES, 'UTF-8');
+$__dbg_captcha = !empty($_POST['g-recaptcha-response']) ? 'SI' : 'NO';
+$__dbg_policy  = isset($_POST['politicas_privacidad']) ? 'SI' : 'NO';
+
 // Controlador ejecuta la lógica de login y define: $mensaje_error, $mensaje_exito, $csrf_token
 require_once __DIR__ . '/../../Controllers/AuthController.php';
 ?>
@@ -84,12 +90,15 @@ require_once __DIR__ . '/../../Controllers/AuthController.php';
                             <?= htmlspecialchars($mensaje_error, ENT_QUOTES, 'UTF-8') ?>
                         </div>
                     <?php endif; ?>
-                    <?php /* DEBUG TEMPORAL */ if (isset($_SESSION['__dbg'])): ?>
-                        <div class="alert alert-warning small p-2">
-                            <strong>DEBUG:</strong> <?= htmlspecialchars($_SESSION['__dbg']) ?>
-                        </div>
-                        <?php unset($_SESSION['__dbg']); ?>
-                    <?php endif; ?>
+                    <?php /* DEBUG TEMPORAL — sin sesión */ ?>
+                    <div class="alert alert-warning small p-2">
+                        <strong>DEBUG:</strong>
+                        método=<?= $__dbg_method ?> |
+                        usuario=<?= $__dbg_user ?: '(vacío)' ?> |
+                        captcha=<?= $__dbg_captcha ?> |
+                        política=<?= $__dbg_policy ?> |
+                        error=<?= htmlspecialchars($mensaje_error ?: '(ninguno)') ?>
+                    </div>
 
                     <?php if ($mensaje_exito !== ''): ?>
                         <div class="alert alert-success d-flex align-items-center" role="alert">
