@@ -53,6 +53,15 @@ $is_https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
 if ($is_https) {
     ini_set('session.cookie_secure', '1');
 }
+// On Azure App Service, /tmp is ephemeral (cleared on container restart/redeploy).
+// Store sessions in /home/site/php_sessions which is backed by Azure Files and persists.
+if (getenv('WEBSITE_SITE_NAME')) {
+    $az_session_path = '/home/site/php_sessions';
+    if (!is_dir($az_session_path)) {
+        @mkdir($az_session_path, 0750, true);
+    }
+    ini_set('session.save_path', $az_session_path);
+}
 
 session_start();
 define('BASE_PATH', dirname(__DIR__));
