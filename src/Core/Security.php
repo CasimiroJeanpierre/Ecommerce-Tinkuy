@@ -77,14 +77,34 @@ class Security
 
     /**
      * Devuelve la IP real del cliente, validada con FILTER_VALIDATE_IP.
-     * Devuelve '0.0.0.0' si la IP no puede validarse.
+     * En Azure App Service (nginx → PHP-FPM), REMOTE_ADDR es 127.0.0.1 porque
+     * nginx actúa como proxy local. Cuando REMOTE_ADDR es una IP privada/loopback,
+     * se lee el primer IP público de X-Forwarded-For, que Azure's edge inserta y
+     * no puede ser falsificado desde internet público.
      *
      * @return string IP del cliente o '0.0.0.0' como fallback seguro
      */
     public static function obtenerIP(): string
     {
-        $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-        return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '0.0.0.0';
+        $remote = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+
+        // Si REMOTE_ADDR es privada/loopback, estamos detrás de un proxy de confianza
+        $detras_de_proxy = !filter_var(
+            $remote,
+            FILTER_VALIDATE_IP,
+            FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
+        );
+
+        if ($detras_de_proxy && !empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            foreach (array_map('trim', explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])) as $fwd) {
+                // Tomar el primer IP público (el que Azure's edge añade)
+                if (filter_var($fwd, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                    return $fwd;
+                }
+            }
+        }
+
+        return filter_var($remote, FILTER_VALIDATE_IP) ? $remote : '0.0.0.0';
     }
 
     // =========================================================

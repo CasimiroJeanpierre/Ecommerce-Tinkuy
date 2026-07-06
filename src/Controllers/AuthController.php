@@ -252,6 +252,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (Security::estaRateLimited($ip, $usuario, $conn)) {
             $segundos      = Security::obtenerSegundosBloqueo($ip, $usuario, $conn);
             $minutos       = ceil($segundos / 60);
+            header('Retry-After: ' . $segundos); // estándar RFC 7231; ZAP lo verifica
             $mensaje_error = "Demasiados intentos fallidos. Por seguridad, tu acceso ha sido bloqueado. Espera {$minutos} minuto(s) para intentar de nuevo.";
         }
 
