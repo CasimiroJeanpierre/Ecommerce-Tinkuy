@@ -164,7 +164,7 @@ function procesarAgregarCarrito($conn, string $base_url): void {
         header("Location: $base_url?page=index");
         exit;
     }
-    if (!isset($_POST['csrf_token']) || !Security::validarCSRF($_POST['csrf_token'])) {
+    if (!isset($_POST['csrf_token']) || !Security::verificarCSRF($_POST['csrf_token'])) {
         $_SESSION['mensaje_error'] = "Token de seguridad inválido. Por favor, recarga la página.";
         header("Location: $base_url?page=products");
         exit;
@@ -391,8 +391,8 @@ switch ($page) {
         $variantes = $modeloProducto->getVariantesActivasPorId($conn, $id_producto);
         $variantes_json = json_encode($variantes);
 
-        $ruta_base_principal = PROJECT_ROOT . "/public/img/productos/";
-        $ruta_base_variantes = PROJECT_ROOT . "/public/img/productos/variantes/";
+        $ruta_base_principal = PUBLIC_URL . "/img/productos/";
+        $ruta_base_variantes = PUBLIC_URL . "/img/productos/variantes/";
         $imagen_mostrada_inicial = htmlspecialchars(trim($producto['imagen_principal'] ?? 'default.png'));
 
         require BASE_PATH . '/src/Views/producto/producto.php';
