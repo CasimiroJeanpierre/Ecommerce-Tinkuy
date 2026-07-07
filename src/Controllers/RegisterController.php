@@ -109,17 +109,30 @@ function registrarUsuarioEnBD(string $usuario, string $email, string $clave, str
         $stmt_usuario = $conn->prepare(
             "INSERT INTO usuarios (id_rol, usuario, email, clave_hash) VALUES (?, ?, ?, ?)"
         );
+        if (!$stmt_usuario) {
+            throw new \RuntimeException("prepare usuarios: " . $conn->error, $conn->errno);
+        }
         $stmt_usuario->bind_param("isss", $id_rol_var, $usuario, $email, $clave_hash);
-        $stmt_usuario->execute();
+        if (!$stmt_usuario->execute()) {
+            throw new \RuntimeException($stmt_usuario->error, $stmt_usuario->errno);
+        }
 
         $nuevo_usuario_id = $conn->insert_id;
+        if (!$nuevo_usuario_id) {
+            throw new \RuntimeException("insert_id vacío tras insertar usuario", 0);
+        }
 
         $stmt_perfil = $conn->prepare(
             "INSERT INTO perfiles (id_usuario, nombres, apellidos, telefono) VALUES (?, ?, ?, ?)"
         );
+        if (!$stmt_perfil) {
+            throw new \RuntimeException("prepare perfiles: " . $conn->error, $conn->errno);
+        }
         $telefono_a_insertar = ($telefono !== '') ? $telefono : null;
         $stmt_perfil->bind_param("isss", $nuevo_usuario_id, $nombres, $apellidos, $telefono_a_insertar);
-        $stmt_perfil->execute();
+        if (!$stmt_perfil->execute()) {
+            throw new \RuntimeException($stmt_perfil->error, $stmt_perfil->errno);
+        }
 
         $conn->commit();
 
@@ -133,11 +146,12 @@ function registrarUsuarioEnBD(string $usuario, string $email, string $clave, str
         header("Location: {$base_url}?page=index");
         exit;
 
-    } catch (mysqli_sql_exception $e) {
+    } catch (\RuntimeException $e) {
         $conn->rollback();
+        error_log("registrarUsuarioEnBD error [{$e->getCode()}]: " . $e->getMessage());
         return ($e->getCode() === 1062)
             ? "El usuario o email ya está registrado."
-            : "Error al registrar. Intenta de nuevo.";
+            : "Error al registrar. Intenta de nuevo. (" . $e->getMessage() . ")";
     }
 }
 
