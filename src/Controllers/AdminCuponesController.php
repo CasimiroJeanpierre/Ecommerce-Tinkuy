@@ -80,8 +80,11 @@ class AdminCuponesController
             }
             if ($mensaje_error === '') {
                 // Insertar en Base de Datos
-                $stmt_insert = $this->conn->prepare("INSERT INTO cupones (codigo, porcentaje_descuento, fecha_expiracion, estado) VALUES (?, ?, ?, 'activo')");
-                $stmt_insert->bind_param("sds", $codigo, $porcentaje, $fecha_expiracion);
+                $res_cup = $this->conn->query("SELECT COALESCE(MAX(id_cupon), 0) + 1 AS next_id FROM cupones");
+                $new_id_cupon = (int)$res_cup->fetch_assoc()['next_id'];
+                $res_cup->free();
+                $stmt_insert = $this->conn->prepare("INSERT INTO cupones (id_cupon, codigo, porcentaje_descuento, fecha_expiracion, estado) VALUES (?, ?, ?, ?, 'activo')");
+                $stmt_insert->bind_param("isds", $new_id_cupon, $codigo, $porcentaje, $fecha_expiracion);
                 $ok = $stmt_insert->execute();
                 $stmt_insert->close();
                 if ($ok) {

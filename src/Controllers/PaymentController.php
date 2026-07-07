@@ -295,18 +295,25 @@ class PaymentController {
      * @return int ID del pedido recién insertado (insert_id del mysqli)
      */
     private function crearPedido($id_usuario, $id_direccion, $total) {
+        $res = $this->conn->query("SELECT COALESCE(MAX(id_pedido), 0) + 1 AS next_id FROM pedidos");
+        $new_id = (int)$res->fetch_assoc()['next_id'];
+        $res->free();
+
         $stmt = $this->conn->prepare("
             INSERT INTO pedidos (
-                id_usuario, 
-                id_direccion_envio, 
-                id_estado_pedido, 
-                total_pedido, 
+                id_pedido,
+                id_usuario,
+                id_direccion_envio,
+                id_estado_pedido,
+                total_pedido,
                 fecha_pedido
-            ) VALUES (?, ?, 2, ?, NOW())
+            ) VALUES (?, ?, ?, 2, ?, NOW())
         ");
-        $stmt->bind_param("iid", $id_usuario, $id_direccion, $total);
-        $stmt->execute();
-        return $this->conn->insert_id;
+        $stmt->bind_param("iiid", $new_id, $id_usuario, $id_direccion, $total);
+        if (!$stmt->execute()) {
+            throw new \RuntimeException($stmt->error, $stmt->errno);
+        }
+        return $new_id;
     }
 
     /**
@@ -326,15 +333,19 @@ class PaymentController {
      * @throws \Exception Si affected_rows === 0 al actualizar stock (posible condición de carrera)
      */
     private function procesarDetallesPedido($id_pedido, $carrito, $precios_reales) {
+        $res = $this->conn->query("SELECT COALESCE(MAX(id_detalle), 0) + 1 AS next_id FROM detalle_pedido");
+        $next_detalle_id = (int)$res->fetch_assoc()['next_id'];
+        $res->free();
+
         $stmt_detalle = $this->conn->prepare("
             INSERT INTO detalle_pedido (
-                id_pedido, id_variante, cantidad, precio_historico
-            ) VALUES (?, ?, ?, ?)
+                id_detalle, id_pedido, id_variante, cantidad, precio_historico
+            ) VALUES (?, ?, ?, ?, ?)
         ");
-        
+
         $stmt_stock = $this->conn->prepare("
-            UPDATE variantes_producto 
-            SET stock = stock - ? 
+            UPDATE variantes_producto
+            SET stock = stock - ?
             WHERE id_variante = ? AND stock >= ?
         ");
 
@@ -342,11 +353,10 @@ class PaymentController {
             $cantidad = $item['cantidad'];
             $precio = $precios_reales[$id_variante];
 
-            // Insertar detalle
-            $stmt_detalle->bind_param("iiid", $id_pedido, $id_variante, $cantidad, $precio);
+            $stmt_detalle->bind_param("iiiid", $next_detalle_id, $id_pedido, $id_variante, $cantidad, $precio);
             $stmt_detalle->execute();
+            $next_detalle_id++;
 
-            // Actualizar stock
             $stmt_stock->bind_param("iii", $cantidad, $id_variante, $cantidad);
             $stmt_stock->execute();
 

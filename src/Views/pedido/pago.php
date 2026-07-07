@@ -46,9 +46,9 @@ function validarStockYCalcularTotal(array $carrito, array $precios_reales, array
  *
  * @throws Exception
  */
-function insertarItemPedido(int $id_pedido, int $id_variante, int $cantidad, float $precio, \mysqli_stmt $stmt_detalle, \mysqli_stmt $stmt_stock): void
+function insertarItemPedido(int $id_detalle, int $id_pedido, int $id_variante, int $cantidad, float $precio, \mysqli_stmt $stmt_detalle, \mysqli_stmt $stmt_stock): void
 {
-    $stmt_detalle->bind_param("iiid", $id_pedido, $id_variante, $cantidad, $precio);
+    $stmt_detalle->bind_param("iiiid", $id_detalle, $id_pedido, $id_variante, $cantidad, $precio);
     $stmt_detalle->execute();
 
     $stmt_stock->bind_param("iii", $cantidad, $id_variante, $cantidad);
@@ -155,18 +155,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Crear el Pedido
+        $res_pedido = $conn->query("SELECT COALESCE(MAX(id_pedido), 0) + 1 AS next_id FROM pedidos");
+        $nuevo_pedido_id = (int)$res_pedido->fetch_assoc()['next_id'];
+        $res_pedido->free();
+
         $stmt_pedido = $conn->prepare("
-            INSERT INTO pedidos (id_usuario, id_direccion_envio, id_estado_pedido, total_pedido, fecha_pedido)
-            VALUES (?, ?, 2, ?, NOW())
+            INSERT INTO pedidos (id_pedido, id_usuario, id_direccion_envio, id_estado_pedido, total_pedido, fecha_pedido)
+            VALUES (?, ?, ?, 2, ?, NOW())
         ");
-        $stmt_pedido->bind_param("iid", $id_usuario, $id_direccion_seleccionada, $total_seguro);
+        $stmt_pedido->bind_param("iiid", $nuevo_pedido_id, $id_usuario, $id_direccion_seleccionada, $total_seguro);
         $stmt_pedido->execute();
-        $nuevo_pedido_id = $conn->insert_id;
 
         // Guardar los Detalles del Pedido y actualizar stock
+        $res_detalle = $conn->query("SELECT COALESCE(MAX(id_detalle), 0) + 1 AS next_id FROM detalle_pedido");
+        $next_detalle_id = (int)$res_detalle->fetch_assoc()['next_id'];
+        $res_detalle->free();
+
         $stmt_detalle = $conn->prepare("
-            INSERT INTO detalle_pedido (id_pedido, id_variante, cantidad, precio_historico)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO detalle_pedido (id_detalle, id_pedido, id_variante, cantidad, precio_historico)
+            VALUES (?, ?, ?, ?, ?)
         ");
 
         $stmt_stock = $conn->prepare("
@@ -176,16 +183,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ");
 
         foreach ($_SESSION['carrito'] as $id_variante => $item) {
-            insertarItemPedido($nuevo_pedido_id, (int) $id_variante, $item['cantidad'], $precios_reales[$id_variante], $stmt_detalle, $stmt_stock);
+            insertarItemPedido($next_detalle_id++, $nuevo_pedido_id, (int) $id_variante, $item['cantidad'], $precios_reales[$id_variante], $stmt_detalle, $stmt_stock);
         }
 
         // Registrar la Transacción
+        $res_trans = $conn->query("SELECT COALESCE(MAX(id_transaccion), 0) + 1 AS next_id FROM transacciones");
+        $new_id_trans = (int)$res_trans->fetch_assoc()['next_id'];
+        $res_trans->free();
+
         $stmt_transaccion = $conn->prepare("
-            INSERT INTO transacciones (id_pedido, metodo_pago, monto, estado_pago, id_externo_gateway, fecha_transaccion)
-            VALUES (?, 'Tarjeta (Simulada)', ?, 'exitoso', ?, NOW())
+            INSERT INTO transacciones (id_transaccion, id_pedido, metodo_pago, monto, estado_pago, id_externo_gateway, fecha_transaccion)
+            VALUES (?, ?, 'Tarjeta (Simulada)', ?, 'exitoso', ?, NOW())
         ");
         $id_gateway_simulado = "txn_" . bin2hex(random_bytes(16));
-        $stmt_transaccion->bind_param("ids", $nuevo_pedido_id, $total_seguro, $id_gateway_simulado);
+        $stmt_transaccion->bind_param("iids", $new_id_trans, $nuevo_pedido_id, $total_seguro, $id_gateway_simulado);
         $stmt_transaccion->execute();
 
         // Confirmar transacción

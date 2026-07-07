@@ -184,13 +184,17 @@ class Security
      */
     public static function registrarIntento(string $ip, string $usuario, bool $exitoso, $conn): void
     {
+        $res = $conn->query("SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM login_intentos");
+        if (!$res) return;
+        $new_id = (int)$res->fetch_assoc()['next_id'];
+        $res->free();
         $stmt = $conn->prepare(
-            "INSERT INTO login_intentos (ip, usuario, exitoso, fecha_intento) VALUES (?, ?, ?, NOW())"
+            "INSERT INTO login_intentos (id, ip, usuario, exitoso, fecha_intento) VALUES (?, ?, ?, ?, NOW())"
         );
         if (!$stmt)
             return;
         $exitoso_int = $exitoso ? 1 : 0;
-        $stmt->bind_param("ssi", $ip, $usuario, $exitoso_int);
+        $stmt->bind_param("issi", $new_id, $ip, $usuario, $exitoso_int);
         $stmt->execute();
         $stmt->close();
     }

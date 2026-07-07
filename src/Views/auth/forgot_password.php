@@ -40,8 +40,11 @@ function guardarTokenYEnviarEmail(string $email, $conn): array
         $del->bind_param("s", $email);
         $del->execute();
 
-        $ins = $conn->prepare("INSERT INTO password_resets (email, token_hash, expiracion) VALUES (?, ?, ?)");
-        $ins->bind_param("sss", $email, $token_hash, $expiracion);
+        $res_pr = $conn->query("SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM password_resets");
+        $new_id_pr = (int)$res_pr->fetch_assoc()['next_id'];
+        $res_pr->free();
+        $ins = $conn->prepare("INSERT INTO password_resets (id, email, token_hash, expiracion) VALUES (?, ?, ?, ?)");
+        $ins->bind_param("isss", $new_id_pr, $email, $token_hash, $expiracion);
         $ins->execute();
 
         $conn->commit();

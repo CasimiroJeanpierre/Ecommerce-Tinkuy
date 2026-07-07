@@ -55,10 +55,13 @@ class Mensaje
     public function guardarMensaje($conn, $nombre, $email, $asunto, $mensaje)
     {
         try {
+            $res = $conn->query("SELECT COALESCE(MAX(id_mensaje), 0) + 1 AS next_id FROM mensajes_contacto");
+            $new_id = (int)$res->fetch_assoc()['next_id'];
+            $res->free();
             $stmt = $conn->prepare(
-                "INSERT INTO mensajes_contacto (nombre, email, asunto, mensaje) VALUES (?, ?, ?, ?)"
+                "INSERT INTO mensajes_contacto (id_mensaje, nombre, email, asunto, mensaje) VALUES (?, ?, ?, ?, ?)"
             );
-            $stmt->bind_param("ssss", $nombre, $email, $asunto, $mensaje);
+            $stmt->bind_param("issss", $new_id, $nombre, $email, $asunto, $mensaje);
             $stmt->execute();
             $stmt->close();
             return true; // Éxito
