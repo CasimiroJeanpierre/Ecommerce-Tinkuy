@@ -394,26 +394,32 @@ if ($seccion_activa === 'direcciones' && $accion === 'agregar_direccion') {
     try {
         $err = validarCamposDireccion($direccion, $ciudad, $pais, $codigo_postal);
         if ($err !== null) throw new \InvalidArgumentException($err);
+
+        $res_dir = $conn->query("SELECT COALESCE(MAX(id_direccion), 0) + 1 AS next_id FROM direcciones");
+        $new_id_dir = (int)$res_dir->fetch_assoc()['next_id'];
+        $res_dir->free();
+
         $stmt = $conn->prepare(
-            "INSERT INTO direcciones (id_usuario, direccion, ciudad, pais, codigo_postal, es_principal)
-             VALUES (?, ?, ?, ?, ?, ?)"
+            "INSERT INTO direcciones (id_direccion, id_usuario, direccion, ciudad, pais, codigo_postal, es_principal)
+             VALUES (?, ?, ?, ?, ?, ?, ?)"
         );
-        $stmt->bind_param("issssi", $id_usuario, $direccion, $ciudad, $pais, $codigo_postal, $es_principal);
-        $stmt->execute();
+        $stmt->bind_param("iissssi", $new_id_dir, $id_usuario, $direccion, $ciudad, $pais, $codigo_postal, $es_principal);
+        if (!$stmt->execute()) {
+            throw new \RuntimeException($stmt->error, $stmt->errno);
+        }
         $stmt->close();
         $mensaje_exito = "Dirección guardada con éxito.";
         if ($es_principal) {
-            $last_id = $conn->insert_id;
             $stmt_up = $conn->prepare(
                 "UPDATE direcciones SET es_principal = 0 WHERE id_usuario = ? AND id_direccion != ?"
             );
-            $stmt_up->bind_param("ii", $id_usuario, $last_id);
+            $stmt_up->bind_param("ii", $id_usuario, $new_id_dir);
             $stmt_up->execute();
             $stmt_up->close();
         }
     } catch (\InvalidArgumentException $e) {
         $mensaje_error = $e->getMessage();
-    } catch (mysqli_sql_exception $e) {
+    } catch (mysqli_sql_exception|\RuntimeException $e) {
         $mensaje_error = "Error al guardar la dirección: " . $e->getMessage();
     }
 }
@@ -427,18 +433,25 @@ if ($seccion_activa === 'pagos' && $accion === 'agregar_tarjeta') {
     try {
         $err = validarCamposTarjeta($nombre_tarjeta, $numero_tarjeta, $expiracion);
         if ($err !== null) throw new \InvalidArgumentException($err);
+
+        $res_tar = $conn->query("SELECT COALESCE(MAX(id_tarjeta), 0) + 1 AS next_id FROM tarjetas_usuario");
+        $new_id_tar = (int)$res_tar->fetch_assoc()['next_id'];
+        $res_tar->free();
+
         $ultimos_4 = substr($numero_tarjeta, -4);
         $stmt = $conn->prepare(
-            "INSERT INTO tarjetas_usuario (id_usuario, nombre_tarjeta, ultimos_4_digitos, expiracion, tipo)
-             VALUES (?, ?, ?, ?, ?)"
+            "INSERT INTO tarjetas_usuario (id_tarjeta, id_usuario, nombre_tarjeta, ultimos_4_digitos, expiracion, tipo)
+             VALUES (?, ?, ?, ?, ?, ?)"
         );
-        $stmt->bind_param("issss", $id_usuario, $nombre_tarjeta, $ultimos_4, $expiracion, $tipo);
-        $stmt->execute();
+        $stmt->bind_param("iissss", $new_id_tar, $id_usuario, $nombre_tarjeta, $ultimos_4, $expiracion, $tipo);
+        if (!$stmt->execute()) {
+            throw new \RuntimeException($stmt->error, $stmt->errno);
+        }
         $stmt->close();
         $mensaje_exito = "Tarjeta simulada agregada con éxito.";
     } catch (\InvalidArgumentException $e) {
         $mensaje_error = $e->getMessage();
-    } catch (mysqli_sql_exception $e) {
+    } catch (mysqli_sql_exception|\RuntimeException $e) {
         $mensaje_error = "Error al guardar la tarjeta: " . $e->getMessage();
     }
 }
