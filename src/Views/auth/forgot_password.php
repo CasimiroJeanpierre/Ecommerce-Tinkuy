@@ -134,13 +134,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body class="bg-light d-flex align-items-center justify-content-center" style="min-height: 100vh;">
     <div class="card p-4 shadow-sm" style="max-width: 400px; width: 90%;">
         <div class="text-center mb-4">
-            <i class="bi bi-key-fill" style="font-size: 3rem; color: #0d6efd;"></i>
+            <i class="bi bi-key-fill" style="font-size: 3rem; color: #0d6efd;" aria-hidden="true"></i>
             <h3 class="mt-2">¿Olvidaste tu contraseña?</h3>
             <p class="text-muted">Ingresa tu correo y te enviaremos un enlace para restablecerla.</p>
         </div>
 
         <?php if ($mensaje): ?>
-            <div class="alert alert-<?= htmlspecialchars($tipo_mensaje) ?>"><?= htmlspecialchars($mensaje) ?></div>
+            <div class="alert alert-<?= htmlspecialchars($tipo_mensaje) ?>" role="alert"><?= htmlspecialchars($mensaje) ?></div>
         <?php endif; ?>
 
         <form method="POST">
@@ -148,19 +148,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="mb-3">
                 <label for="email" class="form-label">Correo electrónico</label>
                 <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                    <span class="input-group-text"><i class="bi bi-envelope" aria-hidden="true"></i></span>
                     <input type="email" class="form-control" name="email" id="email" placeholder="tu.correo@ejemplo.com"
                         required>
                 </div>
             </div>
             <button type="submit" class="btn btn-primary w-100">
-                <i class="bi bi-send"></i> Enviar enlace de recuperación
+                <i class="bi bi-send" aria-hidden="true"></i> Enviar enlace de recuperación
             </button>
         </form>
         <hr>
         <div class="text-center">
-            <a href="<?= $base_url ?>?page=login" class="text-decoration-none"><i class="bi bi-arrow-left"></i> Volver
-                al inicio de sesión</a>
+            <a href="<?= $base_url ?>?page=login" class="text-decoration-none"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver al inicio de sesión</a>
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>

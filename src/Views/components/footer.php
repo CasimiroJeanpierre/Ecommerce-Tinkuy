@@ -19,10 +19,10 @@
             <!-- Redes sociales -->
             <div class="col-md-6 text-center text-md-end">
                 <p class="mb-2">Síguenos en redes:</p>
-                <a href="#" class="text-white me-3"><i class="bi bi-facebook fs-5"></i></a>
-                <a href="#" class="text-white me-3"><i class="bi bi-instagram fs-5"></i></a>
-                <a href="#" class="text-white me-3"><i class="bi bi-twitter fs-5"></i></a>
-                <a href="#" class="text-white"><i class="bi bi-whatsapp fs-5"></i></a>
+                <a href="#" class="text-white me-3" aria-label="Facebook"><i class="bi bi-facebook fs-5" aria-hidden="true"></i></a>
+                <a href="#" class="text-white me-3" aria-label="Instagram"><i class="bi bi-instagram fs-5" aria-hidden="true"></i></a>
+                <a href="#" class="text-white me-3" aria-label="Twitter"><i class="bi bi-twitter fs-5" aria-hidden="true"></i></a>
+                <a href="#" class="text-white" aria-label="WhatsApp"><i class="bi bi-whatsapp fs-5" aria-hidden="true"></i></a>
             </div>
         </div>
 

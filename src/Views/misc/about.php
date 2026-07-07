@@ -50,7 +50,7 @@ $base_url = defined('PUBLIC_URL') ? PUBLIC_URL : ($project_root . "/public");
                     <img src="<?= $public_url ?>/img/muchastelas.jpeg" alt="Artesanas trabajando" class="img-fluid rounded shadow">
                 </div>
                 <div class="col-md-6">
-                    <h3 class="text-uppercase">Nuestra Historia</h3>
+                    <h2 class="text-uppercase">Nuestra Historia</h2>
                     <p>
                         En Tinkuy, nos inspiramos en el arte ancestral de los pueblos andinos, donde cada prenda tiene
                         una historia que contar. Comenzamos con un pequeño grupo de mujeres de la cárcel de Jauja, a
@@ -68,7 +68,7 @@ $base_url = defined('PUBLIC_URL') ? PUBLIC_URL : ($project_root . "/public");
     <section class="container my-5">
         <div class="row">
             <div class="col-md-6 mb-4 mb-md-0">
-                <h3 class="text-uppercase">Nuestra Misión</h3>
+                <h2 class="text-uppercase">Nuestra Misión</h2>
                 <p>
                     Nuestra misión es generar un impacto positivo en las comunidades peruanas, especialmente en aquellas
                     más vulnerables. Queremos ser un puente entre la tradición artesanal y el mercado global, promoviendo
@@ -77,7 +77,7 @@ $base_url = defined('PUBLIC_URL') ? PUBLIC_URL : ($project_root . "/public");
                 </p>
             </div>
             <div class="col-md-6">
-                <h3 class="text-uppercase">Nuestra Visión</h3>
+                <h2 class="text-uppercase">Nuestra Visión</h2>
                 <p>
                     Ser reconocidos como una marca líder en productos artesanales de calidad, ofreciendo al mundo la
                     posibilidad de adquirir artículos únicos que cuenten una historia de transformación social y
@@ -89,7 +89,7 @@ $base_url = defined('PUBLIC_URL') ? PUBLIC_URL : ($project_root . "/public");
     </section>
 
     <section class="container my-5">
-        <h3 class="text-center mb-4">¿Cómo Trabajamos?</h3>
+        <h2 class="text-center mb-4">¿Cómo Trabajamos?</h2>
         <div class="row align-items-center">
             <div class="col-md-6 mb-4 mb-md-0">
                 <img src="<?= $public_url ?>/img/trabajadores.jpeg" alt="Proceso de trabajo artesanal" class="img-fluid rounded shadow">

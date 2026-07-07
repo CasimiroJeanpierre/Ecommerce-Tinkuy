@@ -35,7 +35,8 @@ $display_name = htmlspecialchars($_SESSION['usuario'] ?? 'Mi Cuenta');
             <span style="font-weight: bold; letter-spacing: 1px;">Tinkuy</span>
         </a>
         
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Abrir menú de navegación">
             <span class="navbar-toggler-icon"></span>
         </button>
 
@@ -45,34 +46,34 @@ $display_name = htmlspecialchars($_SESSION['usuario'] ?? 'Mi Cuenta');
                 <!-- Mostrar navegación de tienda para todos los usuarios logueados -->
                 <li class="nav-item">
                     <a class="nav-link <?= ($pagina_actual == 'index' ? 'active fw-bold' : ''); ?>" href="<?= $base_url ?>?page=index">
-                        <i class="bi bi-house-door me-1"></i> Inicio
+                        <i class="bi bi-house-door me-1" aria-hidden="true"></i> Inicio
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link <?= ($pagina_actual == 'nosotros' ? 'active fw-bold' : ''); ?>" href="<?= $base_url ?>?page=about">
-                        <i class="bi bi-info-circle me-1"></i> Nosotros
+                        <i class="bi bi-info-circle me-1" aria-hidden="true"></i> Nosotros
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link <?= ($pagina_actual == 'productos' ? 'active fw-bold' : ''); ?>" href="<?= $base_url ?>?page=products">
-                        <i class="bi bi-shop me-1"></i> Productos
+                        <i class="bi bi-shop me-1" aria-hidden="true"></i> Productos
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link <?= ($pagina_actual == 'contacto' ? 'active fw-bold' : ''); ?>" href="<?= $base_url ?>?page=contact">
-                        <i class="bi bi-envelope me-1"></i> Contacto
+                        <i class="bi bi-envelope me-1" aria-hidden="true"></i> Contacto
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link position-relative <?= ($pagina_actual == 'carrito' ? 'active fw-bold' : ''); ?>" href="<?= $base_url ?>?page=cart">
-                        <i class="bi bi-cart me-1"></i> Carrito
+                        <i class="bi bi-cart me-1" aria-hidden="true"></i> Carrito
                     </a>
                 </li>
 
                 <?php if ($is_logged_in): ?>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle text-warning" href="#" id="navbarUserDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-person-circle me-1"></i> <?= $display_name ?>
+                            <i class="bi bi-person-circle me-1" aria-hidden="true"></i> <?= $display_name ?>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarUserDropdown">
                             
@@ -99,12 +100,12 @@ $display_name = htmlspecialchars($_SESSION['usuario'] ?? 'Mi Cuenta');
                     
                     <li class="nav-item">
                         <a class="nav-link <?= ($pagina_actual == 'login' ? 'active fw-bold' : ''); ?>" href="<?= $base_url ?>?page=login">
-                            <i class="bi bi-box-arrow-in-right me-1"></i> Iniciar Sesión
+                            <i class="bi bi-box-arrow-in-right me-1" aria-hidden="true"></i> Iniciar Sesión
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link <?= ($pagina_actual == 'registro' ? 'active fw-bold' : ''); ?>" href="<?= $base_url ?>?page=register">
-                            <i class="bi bi-person-plus-fill me-1"></i> Registrarse
+                            <i class="bi bi-person-plus-fill me-1" aria-hidden="true"></i> Registrarse
                         </a>
                     </li>
                 <?php endif; ?>

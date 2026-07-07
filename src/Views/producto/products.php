@@ -94,11 +94,11 @@ $pagina_actual = 'productos'; // Para el navbar
                         </div>
                         <div class="col-lg-2 col-md-6 d-flex align-items-end">
                              <button class="btn btn-primary btn-sm w-100 me-1" type="submit">
-                                 <i class="bi bi-funnel-fill"></i> Filtrar
+                                 <i class="bi bi-funnel-fill" aria-hidden="true"></i> Filtrar
                              </button>
                              <?php if ($filtros_activos): ?>
-                                 <a href="<?= $controller_url ?>?page=products" class="btn btn-outline-secondary btn-sm w-auto" title="Quitar filtros">
-                                     <i class="bi bi-x-lg"></i>
+                                 <a href="<?= $controller_url ?>?page=products" class="btn btn-outline-secondary btn-sm w-auto" aria-label="Quitar filtros">
+                                     <i class="bi bi-x-lg" aria-hidden="true"></i>
                                  </a>
                              <?php endif; ?>
                         </div>
@@ -108,8 +108,8 @@ $pagina_actual = 'productos'; // Para el navbar
         </div>
 
         <?php if (empty($productos_listados)): ?>
-            <div class="alert alert-info text-center shadow-sm">
-                 <i class="bi bi-info-circle me-2"></i>No se encontraron productos activos que coincidan.
+            <div class="alert alert-info text-center shadow-sm" role="alert">
+                 <i class="bi bi-info-circle me-2" aria-hidden="true"></i>No se encontraron productos activos que coincidan.
                  <?php if ($filtros_activos): ?>
                      Intenta <a href="<?= $controller_url ?>?page=products" class="alert-link">restablecer los filtros</a>.
                  <?php endif; ?>

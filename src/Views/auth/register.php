@@ -57,7 +57,7 @@ require_once __DIR__ . '/../../Controllers/RegisterController.php';
             <div class="card shadow-lg">
                 <div class="card-body p-4 p-md-5">
                     <div class="text-center mb-4">
-                        <i class="bi bi-person-plus-fill" style="font-size: 3rem; color: #0d6efd;"></i>
+                        <i class="bi bi-person-plus-fill" style="font-size: 3rem; color: #0d6efd;" aria-hidden="true"></i>
                         <h3 class="mt-2">Crear Cuenta</h3>
                         <p class="text-muted">Regístrate para empezar a comprar.</p>
                     </div>
@@ -109,14 +109,14 @@ require_once __DIR__ . '/../../Controllers/RegisterController.php';
                                 <label for="clave" class="form-label">Contraseña</label>
                                 <div class="input-group">
                                     <input type="password" class="form-control" id="clave" name="clave">
-                                    <button class="btn btn-outline-secondary toggle-password" type="button" data-target="#clave"><i class="bi bi-eye"></i></button>
+                                    <button class="btn btn-outline-secondary toggle-password" type="button" data-target="#clave" aria-label="Mostrar u ocultar contraseña"><i class="bi bi-eye" aria-hidden="true"></i></button>
                                 </div>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="clave_repetida" class="form-label">Repetir Contraseña</label>
                                 <div class="input-group">
                                     <input type="password" class="form-control" id="clave_repetida" name="clave_repetida">
-                                    <button class="btn btn-outline-secondary toggle-password" type="button" data-target="#clave_repetida"><i class="bi bi-eye"></i></button>
+                                    <button class="btn btn-outline-secondary toggle-password" type="button" data-target="#clave_repetida" aria-label="Mostrar u ocultar repetir contraseña"><i class="bi bi-eye" aria-hidden="true"></i></button>
                                 </div>
                             </div>
                         </div>
@@ -142,7 +142,7 @@ require_once __DIR__ . '/../../Controllers/RegisterController.php';
 
                         <div class="d-grid mt-3">
                             <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="bi bi-check-lg"></i> Registrarme
+                                <i class="bi bi-check-lg" aria-hidden="true"></i> Registrarme
                             </button>
                         </div>
                     </form>
@@ -171,7 +171,7 @@ require_once __DIR__ . '/../../Controllers/RegisterController.php';
                 if (input) {
                     const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
                     input.setAttribute('type', type);
-                    this.innerHTML = type === 'password' ? '<i class="bi bi-eye"></i>' : '<i class="bi bi-eye-slash"></i>';
+                    this.innerHTML = type === 'password' ? '<i class="bi bi-eye" aria-hidden="true"></i>' : '<i class="bi bi-eye-slash" aria-hidden="true"></i>';
                 }
             });
         });

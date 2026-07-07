@@ -73,7 +73,7 @@ require_once __DIR__ . '/../../Controllers/AuthController.php';
             <div class="card shadow-lg">
                 <div class="card-body">
                     <div class="text-center mb-4">
-                        <i class="bi bi-person-circle login-icon"></i>
+                        <i class="bi bi-person-circle login-icon" aria-hidden="true"></i>
                         <h3 class="mt-2">Iniciar Sesión</h3>
                         <p class="text-muted">Bienvenido de nuevo.</p>
                     </div>
@@ -100,7 +100,7 @@ require_once __DIR__ . '/../../Controllers/AuthController.php';
                         <div class="mb-3">
                             <label for="usuario" class="form-label">Nombre de usuario</label>
                             <div class="input-group">
-                                <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                <span class="input-group-text"><i class="bi bi-person" aria-hidden="true"></i></span>
                                 <input type="text" class="form-control" id="usuario" name="usuario"
                                     placeholder="Tu usuario" autocomplete="username" maxlength="20">
                             </div>
@@ -109,11 +109,11 @@ require_once __DIR__ . '/../../Controllers/AuthController.php';
                         <div class="mb-3">
                             <label for="clave" class="form-label">Contraseña</label>
                             <div class="input-group">
-                                <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                                <span class="input-group-text"><i class="bi bi-lock" aria-hidden="true"></i></span>
                                 <input type="password" class="form-control" id="clave" name="clave"
                                     placeholder="••••••••" autocomplete="current-password" maxlength="20">
-                                <button class="btn btn-outline-secondary" type="button" id="togglePassword">
-                                    <i class="bi bi-eye"></i>
+                                <button class="btn btn-outline-secondary" type="button" id="togglePassword" aria-label="Mostrar u ocultar contraseña">
+                                    <i class="bi bi-eye" aria-hidden="true"></i>
                                 </button>
                             </div>
                         </div>
@@ -166,7 +166,7 @@ require_once __DIR__ . '/../../Controllers/AuthController.php';
             togglePassword.addEventListener('click', function (e) {
                 const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
                 password.setAttribute('type', type);
-                this.innerHTML = type === 'password' ? '<i class="bi bi-eye"></i>' : '<i class="bi bi-eye-slash"></i>';
+                this.innerHTML = type === 'password' ? '<i class="bi bi-eye" aria-hidden="true"></i>' : '<i class="bi bi-eye-slash" aria-hidden="true"></i>';
             });
         }
     </script>

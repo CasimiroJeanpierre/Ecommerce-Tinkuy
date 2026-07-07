@@ -49,7 +49,7 @@ $pagina_actual = 'contacto'; // Para el navbar
         <div class="row justify-content-center">
             <div class="col-lg-8">
                 <div class="text-center mb-5">
-                    <i class="bi bi-envelope-heart-fill" style="font-size: 4rem; color: #0d6efd;"></i>
+                    <i class="bi bi-envelope-heart-fill" style="font-size: 4rem; color: #0d6efd;" aria-hidden="true"></i>
                     <h1 class="mt-2">Contáctanos</h1>
                     <p class="lead text-muted">¿Tienes preguntas? Estamos aquí para ayudarte.</p>
                 </div>
@@ -58,10 +58,10 @@ $pagina_actual = 'contacto'; // Para el navbar
                     <div class="card-body p-4 p-md-5">
 
                         <?php if (!empty($mensaje_error)): ?>
-                            <div class="alert alert-danger alert-error-animated"><?= htmlspecialchars($mensaje_error) ?></div>
+                            <div class="alert alert-danger alert-error-animated" role="alert"><?= htmlspecialchars($mensaje_error) ?></div>
                         <?php endif; ?>
                         <?php if (!empty($mensaje_exito)): ?>
-                            <div class="alert alert-success"><?= htmlspecialchars($mensaje_exito) ?></div>
+                            <div class="alert alert-success" role="alert"><?= htmlspecialchars($mensaje_exito) ?></div>
                         <?php endif; ?>
 
                         <form action="<?= $controller_url ?>?page=contact" method="POST" novalidate>
@@ -70,14 +70,14 @@ $pagina_actual = 'contacto'; // Para el navbar
                                 <div class="col-md-6 mb-3">
                                     <label for="nombre" class="form-label">Tu Nombre</label>
                                     <div class="input-group">
-                                        <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
+                                        <span class="input-group-text"><i class="bi bi-person-fill" aria-hidden="true"></i></span>
                                         <input type="text" class="form-control" id="nombre" name="nombre" value="<?= htmlspecialchars($nombre) ?>" placeholder="Ej: Juan Pérez" required>
                                     </div>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="email" class="form-label">Tu Email</label>
                                     <div class="input-group">
-                                        <span class="input-group-text"><i class="bi bi-envelope-fill"></i></span>
+                                        <span class="input-group-text"><i class="bi bi-envelope-fill" aria-hidden="true"></i></span>
                                         <input type="email" class="form-control" id="email" name="email" value="<?= htmlspecialchars($email) ?>" placeholder="correo@ejemplo.com" required>
                                     </div>
                                 </div>
@@ -85,7 +85,7 @@ $pagina_actual = 'contacto'; // Para el navbar
                             <div class="mb-3">
                                 <label for="asunto" class="form-label">Asunto</label>
                                 <div class="input-group">
-                                    <span class="input-group-text"><i class="bi bi-lightbulb-fill"></i></span>
+                                    <span class="input-group-text"><i class="bi bi-lightbulb-fill" aria-hidden="true"></i></span>
                                     <input type="text" class="form-control" id="asunto" name="asunto" value="<?= htmlspecialchars($asunto) ?>" placeholder="Duda sobre envíos, Devolución, etc." required>
                                 </div>
                             </div>
@@ -95,7 +95,7 @@ $pagina_actual = 'contacto'; // Para el navbar
                             </div>
                             <div class="d-grid">
                                 <button type="submit" class="btn btn-primary btn-lg">
-                                    <i class="bi bi-send-fill"></i> Enviar Mensaje
+                                    <i class="bi bi-send-fill" aria-hidden="true"></i> Enviar Mensaje
                                 </button>
                             </div>
                         </form>
