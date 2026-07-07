@@ -278,20 +278,31 @@ class AdminUsuariosController
                 $clave_hash = password_hash($clave, PASSWORD_DEFAULT);
                 $this->conn->begin_transaction();
 
+                $res = $this->conn->query("SELECT COALESCE(MAX(id_usuario), 0) + 1 AS next_id FROM usuarios");
+                $nuevo_usuario_id = (int)$res->fetch_assoc()['next_id'];
+                $res->free();
+
                 $stmt_usuario = $this->conn->prepare(
-                    "INSERT INTO usuarios (id_rol, usuario, email, clave_hash) VALUES (?, ?, ?, ?)"
+                    "INSERT INTO usuarios (id_usuario, id_rol, usuario, email, clave_hash) VALUES (?, ?, ?, ?, ?)"
                 );
-                $stmt_usuario->bind_param("isss", $id_rol, $usuario, $email, $clave_hash);
-                $stmt_usuario->execute();
-                $nuevo_usuario_id = $this->conn->insert_id;
+                $stmt_usuario->bind_param("iisss", $nuevo_usuario_id, $id_rol, $usuario, $email, $clave_hash);
+                if (!$stmt_usuario->execute()) {
+                    throw new \RuntimeException($stmt_usuario->error, $stmt_usuario->errno);
+                }
                 $stmt_usuario->close();
 
+                $res2 = $this->conn->query("SELECT COALESCE(MAX(id_perfil), 0) + 1 AS next_id FROM perfiles");
+                $nuevo_perfil_id = (int)$res2->fetch_assoc()['next_id'];
+                $res2->free();
+
                 $stmt_perfil = $this->conn->prepare(
-                    "INSERT INTO perfiles (id_usuario, nombres, apellidos, telefono) VALUES (?, ?, ?, ?)"
+                    "INSERT INTO perfiles (id_perfil, id_usuario, nombres, apellidos, telefono) VALUES (?, ?, ?, ?, ?)"
                 );
                 $telefono_a_insertar = $telefono ?: null;
-                $stmt_perfil->bind_param("isss", $nuevo_usuario_id, $nombres, $apellidos, $telefono_a_insertar);
-                $stmt_perfil->execute();
+                $stmt_perfil->bind_param("iisss", $nuevo_perfil_id, $nuevo_usuario_id, $nombres, $apellidos, $telefono_a_insertar);
+                if (!$stmt_perfil->execute()) {
+                    throw new \RuntimeException($stmt_perfil->error, $stmt_perfil->errno);
+                }
                 $stmt_perfil->close();
 
                 $this->conn->commit();
