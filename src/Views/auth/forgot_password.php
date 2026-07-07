@@ -31,7 +31,7 @@ function guardarTokenYEnviarEmail(string $email, $conn): array
 {
     $token       = bin2hex(random_bytes(32));
     $token_hash  = hash('sha256', $token);
-    $expiracion  = date('Y-m-d H:i:s', strtotime('+1 hour'));
+    $expiracion  = gmdate('Y-m-d H:i:s', time() + 3600); // UTC, sin depender de timezone del servidor
 
     try {
         $conn->begin_transaction();
@@ -45,11 +45,14 @@ function guardarTokenYEnviarEmail(string $email, $conn): array
         $res_pr->free();
         $ins = $conn->prepare("INSERT INTO password_resets (id, email, token_hash, expiracion) VALUES (?, ?, ?, ?)");
         $ins->bind_param("isss", $new_id_pr, $email, $token_hash, $expiracion);
-        $ins->execute();
+        if (!$ins->execute() || $ins->affected_rows !== 1) {
+            throw new \Exception("No se pudo guardar el token: " . ($ins->error ?: 'affected_rows=0'));
+        }
 
         $conn->commit();
-    } catch (mysqli_sql_exception $e) {
+    } catch (\Exception $e) {
         $conn->rollback();
+        error_log("password_reset INSERT failed: " . $e->getMessage());
         return ['mensaje' => "Ocurrió un error al procesar tu solicitud. Inténtalo de nuevo.", 'tipo' => 'danger'];
     }
 

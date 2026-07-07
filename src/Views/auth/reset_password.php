@@ -114,12 +114,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && !empty($token_raw)) {
     $clave_nueva = $_POST['clave_nueva'] ?? '';
     $clave_confirm = $_POST['clave_confirm'] ?? '';
 
+    // Re-validar el token al inicio de cada POST para obtener el email y detectar expiración
+    if (!empty($token_post)) {
+        $token_hash_post = hash('sha256', $token_post);
+        $stmt_tok = $conn->prepare("SELECT email FROM password_resets WHERE token_hash = ? AND expiracion > NOW() LIMIT 1");
+        $stmt_tok->bind_param("s", $token_hash_post);
+        $stmt_tok->execute();
+        $res_tok = $stmt_tok->get_result();
+        if ($res_tok->num_rows === 1) {
+            $email_asociado = $res_tok->fetch_assoc()['email'];
+        }
+        $stmt_tok->close();
+    }
+
     // --- INICIO VALIDACIÓN DE CALIDAD (IDs 19, 21-26, 85) ---
     if (empty($clave_nueva) || empty($clave_confirm) || empty($token_post)) {
-        $mensaje = "Error (ID 25): Todos los campos son obligatorios.";
+        $mensaje = "Por favor completa todos los campos.";
         $tipo_mensaje = 'danger';
         $show_form = true; // Mostrar formulario de nuevo si falla
         $token_raw = $token_post; // Mantener el token en el form
+    } elseif ($email_asociado === null) {
+        // El token expiró o ya fue utilizado mientras el usuario completaba el formulario
+        $mensaje = "El enlace de restablecimiento ha expirado o ya fue utilizado. Por favor solicita uno nuevo.";
+        $tipo_mensaje = 'danger';
+        $show_form = false;
     } elseif ($clave_nueva !== $clave_confirm) {
         $mensaje = "Error (ID 85): Las contraseñas no coinciden.";
         $tipo_mensaje = 'danger';
