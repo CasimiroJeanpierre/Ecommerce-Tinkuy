@@ -182,8 +182,12 @@ class AdminProductosController
             return;
         }
 
+        $res_img = $this->conn->query("SELECT COALESCE(MAX(id_imagen), 0) + 1 AS next_id FROM producto_imagenes");
+        $next_imagen_id = (int)$res_img->fetch_assoc()['next_id'];
+        $res_img->free();
+
         $stmt_img = $this->conn->prepare(
-            "INSERT INTO producto_imagenes (id_producto, ruta_imagen) VALUES (?, ?)"
+            "INSERT INTO producto_imagenes (id_imagen, id_producto, ruta_imagen) VALUES (?, ?, ?)"
         );
         $archivos  = $this->normalizarFiles($_FILES['imagenes_adicionales']);
         $agregadas = 0;
@@ -215,8 +219,9 @@ class AdminProductosController
                 throw new Exception("Error al guardar la imagen: {$file['name']}.");
             }
 
-            $stmt_img->bind_param("is", $id_producto, $nombre_limpio);
+            $stmt_img->bind_param("iis", $next_imagen_id, $id_producto, $nombre_limpio);
             $stmt_img->execute();
+            $next_imagen_id++;
             $agregadas++;
         }
 
@@ -372,8 +377,12 @@ class AdminProductosController
         $stmt_check_prop->close();
         $sku_simulado = strtoupper(substr($nombre_prod_temp, 0, 3)) . '-' . $id_producto . '-' . $tallaFinal . '-' . $colorFinal;
 
-        $stmt = $this->conn->prepare("INSERT INTO variantes_producto (id_producto, talla, color, sku, precio, stock) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("isssdi", $id_producto, $tallaFinal, $colorFinal, $sku_simulado, $precio, $stock);
+        $res_var = $this->conn->query("SELECT COALESCE(MAX(id_variante), 0) + 1 AS next_id FROM variantes_producto");
+        $next_variante_id = (int)$res_var->fetch_assoc()['next_id'];
+        $res_var->free();
+
+        $stmt = $this->conn->prepare("INSERT INTO variantes_producto (id_variante, id_producto, talla, color, sku, precio, stock) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("iisssdi", $next_variante_id, $id_producto, $tallaFinal, $colorFinal, $sku_simulado, $precio, $stock);
         if (!$stmt->execute()) {
             throw new \Exception("Error al agregar variante: " . $this->conn->error);
         }

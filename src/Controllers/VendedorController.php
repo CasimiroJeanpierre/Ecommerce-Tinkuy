@@ -92,8 +92,13 @@ class VendedorController
         if (!isset($_POST['variantes']) || !is_array($_POST['variantes'])) {
             return;
         }
+
+        $res = $this->conn->query("SELECT COALESCE(MAX(id_variante), 0) + 1 AS next_id FROM variantes_producto");
+        $next_variante_id = (int)$res->fetch_assoc()['next_id'];
+        $res->free();
+
         $stmt_variante = $this->conn->prepare(
-            "INSERT INTO variantes_producto (id_producto, talla, color, sku, precio, stock) VALUES (?, ?, ?, ?, ?, ?)"
+            "INSERT INTO variantes_producto (id_variante, id_producto, talla, color, sku, precio, stock) VALUES (?, ?, ?, ?, ?, ?, ?)"
         );
         $variantes_agregadas = [];
 
@@ -128,8 +133,9 @@ class VendedorController
             $talla_sku = preg_replace('/[^A-Za-z0-9]/', '', $tallaFinal);
             $color_sku = preg_replace('/[^A-Za-z0-9]/', '', $colorFinal);
             $sku = strtoupper(substr($nombre, 0, 3)) . '-' . $id_producto . '-' . $talla_sku . '-' . $color_sku . '-' . rand(1000, 9999);
-            $stmt_variante->bind_param("isssdi", $id_producto, $tallaFinal, $colorFinal, $sku, $precio, $stock);
+            $stmt_variante->bind_param("iisssdi", $next_variante_id, $id_producto, $tallaFinal, $colorFinal, $sku, $precio, $stock);
             $stmt_variante->execute();
+            $next_variante_id++;
         }
         $stmt_variante->close();
     }
@@ -251,8 +257,12 @@ class VendedorController
             return;
         }
 
+        $res_img = $this->conn->query("SELECT COALESCE(MAX(id_imagen), 0) + 1 AS next_id FROM producto_imagenes");
+        $next_imagen_id = (int)$res_img->fetch_assoc()['next_id'];
+        $res_img->free();
+
         $stmt_img = $this->conn->prepare(
-            "INSERT INTO producto_imagenes (id_producto, ruta_imagen) VALUES (?, ?)"
+            "INSERT INTO producto_imagenes (id_imagen, id_producto, ruta_imagen) VALUES (?, ?, ?)"
         );
         $archivos  = $this->normalizarFiles($_FILES['imagenes_adicionales']);
         $agregadas = 0;
@@ -284,8 +294,9 @@ class VendedorController
                 throw new Exception("Error al guardar la imagen: {$file['name']}.");
             }
 
-            $stmt_img->bind_param("is", $id_producto, $nombre_limpio);
+            $stmt_img->bind_param("iis", $next_imagen_id, $id_producto, $nombre_limpio);
             $stmt_img->execute();
+            $next_imagen_id++;
             $agregadas++;
         }
 
@@ -433,8 +444,12 @@ class VendedorController
         $color_sku    = preg_replace('/[^A-Za-z0-9]/', '', $colorFinal);
         $sku_simulado = strtoupper(substr($nombre_prod_temp, 0, 3)) . '-' . $id_producto . '-' . $talla_sku . '-' . $color_sku . '-' . rand(1000, 9999);
 
-        $stmt = $this->conn->prepare("INSERT INTO variantes_producto (id_producto, talla, color, sku, precio, stock) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("isssdi", $id_producto, $tallaFinal, $colorFinal, $sku_simulado, $precio, $stock);
+        $res_nv = $this->conn->query("SELECT COALESCE(MAX(id_variante), 0) + 1 AS next_id FROM variantes_producto");
+        $next_var_id = (int)$res_nv->fetch_assoc()['next_id'];
+        $res_nv->free();
+
+        $stmt = $this->conn->prepare("INSERT INTO variantes_producto (id_variante, id_producto, talla, color, sku, precio, stock) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("iisssdi", $next_var_id, $id_producto, $tallaFinal, $colorFinal, $sku_simulado, $precio, $stock);
         if (!$stmt->execute()) {
             throw new Exception("Error al agregar variante: " . $this->conn->error);
         }
@@ -613,14 +628,16 @@ class VendedorController
                     throw new Exception("Error al guardar la imagen principal.");
                 }
 
-                $stmt = $this->conn->prepare("INSERT INTO productos (nombre_producto, descripcion, imagen_principal, id_categoria, id_vendedor, estado) VALUES (?, ?, ?, ?, ?, 'activo')");
-                $stmt->bind_param("sssii", $nombre, $descripcion, $nombre_limpio_principal, $id_categoria, $id_vendedor);
+                $res_prod = $this->conn->query("SELECT COALESCE(MAX(id_producto), 0) + 1 AS next_id FROM productos");
+                $id_producto = (int)$res_prod->fetch_assoc()['next_id'];
+                $res_prod->free();
+
+                $stmt = $this->conn->prepare("INSERT INTO productos (id_producto, nombre_producto, descripcion, imagen_principal, id_categoria, id_vendedor, estado) VALUES (?, ?, ?, ?, ?, ?, 'activo')");
+                $stmt->bind_param("isssii", $id_producto, $nombre, $descripcion, $nombre_limpio_principal, $id_categoria, $id_vendedor);
 
                 if (!$stmt->execute()) {
                     throw new Exception("Error al crear el producto: " . $this->conn->error);
                 }
-
-                $id_producto = $this->conn->insert_id;
                 $stmt->close();
 
                 // Insertar imágenes adicionales respetando el límite máximo
