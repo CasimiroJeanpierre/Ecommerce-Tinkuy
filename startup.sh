@@ -44,6 +44,14 @@ server {
         alias /home/site/wwwroot/public/;
     }
 
+    # Cache static assets in the browser for 1 year
+    location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg|webp|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        add_header X-Content-Type-Options "nosniff" always;
+        access_log off;
+    }
+
     location / {
         try_files $uri $uri/ /index.php?$query_string;
     }
