@@ -106,30 +106,42 @@ function registrarUsuarioEnBD(string $usuario, string $email, string $clave, str
     try {
         $id_rol_var = ID_ROL_CLIENTE;
 
+        // TiDB Serverless no admite ALTER MODIFY para agregar AUTO_INCREMENT a columnas
+        // existentes, por lo que el ID se genera aquí dentro de la transacción.
+        // El bloqueo de transacción serializa inserciones concurrentes en TiDB.
+        $res = $conn->query("SELECT COALESCE(MAX(id_usuario), 0) + 1 AS next_id FROM usuarios");
+        if (!$res) {
+            throw new \RuntimeException("No se pudo generar ID: " . $conn->error, $conn->errno);
+        }
+        $nuevo_usuario_id = (int)$res->fetch_assoc()['next_id'];
+        $res->free();
+
         $stmt_usuario = $conn->prepare(
-            "INSERT INTO usuarios (id_rol, usuario, email, clave_hash) VALUES (?, ?, ?, ?)"
+            "INSERT INTO usuarios (id_usuario, id_rol, usuario, email, clave_hash) VALUES (?, ?, ?, ?, ?)"
         );
         if (!$stmt_usuario) {
             throw new \RuntimeException("prepare usuarios: " . $conn->error, $conn->errno);
         }
-        $stmt_usuario->bind_param("isss", $id_rol_var, $usuario, $email, $clave_hash);
+        $stmt_usuario->bind_param("iisss", $nuevo_usuario_id, $id_rol_var, $usuario, $email, $clave_hash);
         if (!$stmt_usuario->execute()) {
             throw new \RuntimeException($stmt_usuario->error, $stmt_usuario->errno);
         }
 
-        $nuevo_usuario_id = $conn->insert_id;
-        if (!$nuevo_usuario_id) {
-            throw new \RuntimeException("insert_id vacío tras insertar usuario", 0);
+        $res2 = $conn->query("SELECT COALESCE(MAX(id_perfil), 0) + 1 AS next_id FROM perfiles");
+        if (!$res2) {
+            throw new \RuntimeException("No se pudo generar ID perfil: " . $conn->error, $conn->errno);
         }
+        $nuevo_perfil_id = (int)$res2->fetch_assoc()['next_id'];
+        $res2->free();
 
         $stmt_perfil = $conn->prepare(
-            "INSERT INTO perfiles (id_usuario, nombres, apellidos, telefono) VALUES (?, ?, ?, ?)"
+            "INSERT INTO perfiles (id_perfil, id_usuario, nombres, apellidos, telefono) VALUES (?, ?, ?, ?, ?)"
         );
         if (!$stmt_perfil) {
             throw new \RuntimeException("prepare perfiles: " . $conn->error, $conn->errno);
         }
         $telefono_a_insertar = ($telefono !== '') ? $telefono : null;
-        $stmt_perfil->bind_param("isss", $nuevo_usuario_id, $nombres, $apellidos, $telefono_a_insertar);
+        $stmt_perfil->bind_param("iisss", $nuevo_perfil_id, $nuevo_usuario_id, $nombres, $apellidos, $telefono_a_insertar);
         if (!$stmt_perfil->execute()) {
             throw new \RuntimeException($stmt_perfil->error, $stmt_perfil->errno);
         }
